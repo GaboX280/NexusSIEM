@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blue Team | Monitor de Seguridad</title>
+    <!-- Vincula el CSS desde la carpeta estática -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Refresco automático cada 5 segundos -->
+    <meta http-equiv="refresh" content="5">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1> Blue Team - Dashboard Activo</h1>
+            <p>Monitor de intrusiones en tiempo real (IDS/IPS)</p>
+        </header>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Nivel</th>
+                    <th>Sensor</th>
+                    <th>Detalle del Ataque</th>
+                    <th>Respuesta del Firewall</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for alerta in alertas %}
+                <tr>
+                    <td>{{ alerta.tiempo }}</td>
+                    <td><span class="badge {{ alerta.nivel }}">{{ alerta.nivel }}</span></td>
+                    <td>{{ alerta.fuente }}</td>
+                    <td>{{ alerta.mensaje }}</td>
+                    <td class="action">{{ alerta.accion }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="empty">No hay alertas registradas. Sistema seguro.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
