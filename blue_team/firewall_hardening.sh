@@ -1,8 +1,4 @@
 #!/bin/bash
-# ==============================================================================
-# BLUE TEAM: Script de Hardening del Firewall (UFW)
-# Propósito: Automatizar la aplicación de reglas base para proteger la VM.
-# ==============================================================================
 echo "[*] Iniciando el proceso de Hardening del Firewall (UFW)..."
 # 1. Asegurarse de que el script se ejecuta como root
 if [ "$EUID" -ne 0 ]; then
