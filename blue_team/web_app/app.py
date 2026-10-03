@@ -6,7 +6,9 @@ import logging
 import subprocess
 import requests
 import os
+import json
 from datetime import datetime
+from pathlib import Path
 
 # Inicialización de la aplicación Flask
 app = Flask(__name__)
@@ -22,6 +24,7 @@ alertas_recientes = []
 
 # Ruta base para encontrar los scripts en la carpeta blue_team/
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+ATOM_REPORTS_DIR = Path.home() / "Atom-Hardening" / "reports"
 
 logging.basicConfig(
     filename=LOG_FILE,
@@ -55,6 +58,43 @@ def requiere_autenticacion():
             401,
             {"WWW-Authenticate": 'Basic realm="NexusSIEM Blue Team"'},
         )
+
+    return None
+
+
+def cargar_ultimo_reporte_atom():
+    """Carga el reporte JSON más reciente generado por Atom."""
+    if not ATOM_REPORTS_DIR.is_dir():
+        return None
+
+    reportes = sorted(
+        ATOM_REPORTS_DIR.glob("reporte_atom_*.json"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+
+    for reporte_path in reportes:
+        try:
+            with reporte_path.open("r", encoding="utf-8") as archivo:
+                contenido = json.load(archivo)
+
+            reporte = contenido.get("report", {})
+            summary = reporte.get("summary", {})
+            findings = reporte.get("findings", [])
+
+            if not isinstance(summary, dict) or not isinstance(findings, list):
+                continue
+
+            return {
+                "filename": reporte_path.name,
+                "generated": reporte.get("generated"),
+                "summary": summary,
+                "findings": findings,
+            }
+
+        except (OSError, json.JSONDecodeError, ValueError):
+            logging.exception("No se pudo leer el reporte de Atom: %s", reporte_path)
+            continue
 
     return None
 
@@ -248,6 +288,26 @@ def recibir_alerta():
     return jsonify({"status": "ok"}), 200
 
 
+@app.route("/api/audit/latest", methods=["GET"])
+def ultimo_reporte_atom():
+    """Devuelve el último reporte de Atom al operador autenticado."""
+    auth_error = requiere_autenticacion()
+    if auth_error:
+        return auth_error
+
+    reporte = cargar_ultimo_reporte_atom()
+    if reporte is None:
+        return jsonify({
+            "status": "not_found",
+            "message": "Todavía no existe un reporte de Atom."
+        }), 404
+
+    return jsonify({
+        "status": "ok",
+        "report": reporte,
+    }), 200
+
+
 @app.route("/api/run/<herramienta>", methods=["POST"])
 def ejecutar_herramienta(herramienta):
     """Dispara herramientas administrativas del Blue Team."""
@@ -293,7 +353,17 @@ def ejecutar_herramienta(herramienta):
 
 @app.route("/")
 def dashboard():
-    return render_template("index.html", alertas=alertas_recientes)
+    auth_error = requiere_autenticacion()
+    if auth_error:
+        return auth_error
+
+    reporte_atom = cargar_ultimo_reporte_atom()
+
+    return render_template(
+        "index.html",
+        alertas=alertas_recientes,
+        reporte_atom=reporte_atom,
+    )
 
 
 if __name__ == "__main__":
