@@ -974,8 +974,8 @@
         const total = Number(summary.total ?? (report.findings || []).length);
 
         let tone = 'green';
-        if (score < 60) tone = 'red';
-        else if (score < 80) tone = 'amber';
+        if (score < 50) tone = 'red';
+        else if (score < 75) tone = 'amber';
 
         const toneClass = tone === 'green' ? 'signal-green' : (tone === 'amber' ? 'signal-amber' : 'signal-red');
 
