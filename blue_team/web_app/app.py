@@ -62,6 +62,22 @@ def requiere_autenticacion():
     return None
 
 
+def clasificacion_atom(score):
+    """Normaliza la clasificación de Atom para la vista web."""
+    try:
+        score = int(score)
+    except (TypeError, ValueError):
+        score = 0
+
+    if score >= 90:
+        return "EXCELENTE (90-100)"
+    if score >= 75:
+        return "BUENO (75-89)"
+    if score >= 50:
+        return "MODERADO (50-74)"
+    return "CRITICO (0-49)"
+
+
 def cargar_ultimo_reporte_atom():
     """Carga el reporte JSON más reciente generado por Atom."""
     if not ATOM_REPORTS_DIR.is_dir():
@@ -84,6 +100,8 @@ def cargar_ultimo_reporte_atom():
 
             if not isinstance(summary, dict) or not isinstance(findings, list):
                 continue
+
+            summary["rating"] = clasificacion_atom(summary.get("score", 0))
 
             return {
                 "filename": reporte_path.name,
