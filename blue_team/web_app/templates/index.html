@@ -444,7 +444,7 @@
 
                             <div class="mt-6">
                                 <div class="flex items-end gap-3">
-                                    <div class="metric-number text-4xl font-semibold tracking-tight text-white" data-target="{{ ns.total }}">{{ ns.total }}</div>
+                                    <div id="telemetry-total" class="metric-number text-4xl font-semibold tracking-tight text-white" data-live-key="telemetry-total" data-target="{{ ns.total }}">{{ ns.total }}</div>
                                     <div class="pb-1 text-[10px] uppercase tracking-[.14em] text-nexus-600">events buffered</div>
                                 </div>
                                 <div class="mt-4 flex h-2 overflow-hidden rounded-full bg-nexus-800">
@@ -492,7 +492,7 @@
                             <span class="text-[9px] font-bold uppercase tracking-[.18em] text-nexus-600">Total Events</span>
                             <span class="font-mono text-[9px] text-signal-blue">BUFFER</span>
                         </div>
-                        <div class="metric-number mt-4 text-3xl font-semibold tracking-tight text-white" data-target="{{ ns.total }}">{{ ns.total }}</div>
+                        <div id="metric-total" class="metric-number mt-4 text-3xl font-semibold tracking-tight text-white" data-live-key="total" data-target="{{ ns.total }}">{{ ns.total }}</div>
                         <div class="mt-2 text-[10px] text-nexus-600">Eventos recientes en memoria</div>
                     </div>
 
@@ -501,7 +501,7 @@
                             <span class="text-[9px] font-bold uppercase tracking-[.18em] text-nexus-600">Critical</span>
                             <span class="h-2 w-2 rounded-full bg-signal-red shadow-[0_0_12px_rgba(255,96,120,.4)]"></span>
                         </div>
-                        <div class="metric-number mt-4 text-3xl font-semibold tracking-tight text-white" data-target="{{ ns.critical }}">{{ ns.critical }}</div>
+                        <div id="metric-critical" class="metric-number mt-4 text-3xl font-semibold tracking-tight text-white" data-live-key="critical" data-target="{{ ns.critical }}">{{ ns.critical }}</div>
                         <div class="mt-2 text-[10px] text-nexus-600">Prioridad inmediata</div>
                     </div>
 
@@ -510,7 +510,7 @@
                             <span class="text-[9px] font-bold uppercase tracking-[.18em] text-nexus-600">Warnings</span>
                             <span class="h-2 w-2 rounded-full bg-signal-amber shadow-[0_0_12px_rgba(241,185,85,.35)]"></span>
                         </div>
-                        <div class="metric-number mt-4 text-3xl font-semibold tracking-tight text-white" data-target="{{ ns.warning }}">{{ ns.warning }}</div>
+                        <div id="metric-warning" class="metric-number mt-4 text-3xl font-semibold tracking-tight text-white" data-live-key="warning" data-target="{{ ns.warning }}">{{ ns.warning }}</div>
                         <div class="mt-2 text-[10px] text-nexus-600">Actividad potencialmente riesgosa</div>
                     </div>
 
@@ -519,7 +519,7 @@
                             <span class="text-[9px] font-bold uppercase tracking-[.18em] text-nexus-600">Contained</span>
                             <span class="h-2 w-2 rounded-full bg-signal-green shadow-[0_0_12px_rgba(54,217,138,.35)]"></span>
                         </div>
-                        <div class="metric-number mt-4 text-3xl font-semibold tracking-tight text-white" data-target="{{ ns.blocked }}">{{ ns.blocked }}</div>
+                        <div id="metric-blocked" class="metric-number mt-4 text-3xl font-semibold tracking-tight text-white" data-live-key="blocked" data-target="{{ ns.blocked }}">{{ ns.blocked }}</div>
                         <div class="mt-2 text-[10px] text-nexus-600">Bloqueos registrados</div>
                     </div>
                 </section>
@@ -853,20 +853,18 @@
         const warning = alertas.filter(a => a.nivel === 'WARNING').length;
         const blocked = alertas.filter(a => (a.accion || '').toLowerCase().includes('bloque')).length;
 
-        const metricTargets = document.querySelectorAll('.metric-number[data-target]');
-        const values = [total, critical, warning, blocked];
+        const values = {
+            total,
+            critical,
+            warning,
+            blocked,
+            'telemetry-total': total
+        };
 
-        // The first four matching metrics are the command-center metrics.
-        metricTargets.forEach((el, index) => {
-            if (index < 4) el.dataset.target = values[index];
+        Object.entries(values).forEach(([key, value]) => {
+            const el = document.querySelector(`[data-live-key="${key}"]`);
+            if (el) el.dataset.target = value;
         });
-
-        metricTargets.forEach((el, index) => {
-            if (index < 4) el.dataset.target = values[index];
-        });
-
-        const telemetry = document.querySelector('.orbital .metric-number[data-target]');
-        if (telemetry) telemetry.dataset.target = total;
 
         animarNumeros();
     }
@@ -1124,6 +1122,12 @@
             }
 
             const data = await response.json();
+
+            const liveState = document.getElementById('audit-live-state');
+            if (liveState) {
+                liveState.className = 'inline-flex items-center gap-1.5 rounded-full border border-signal-green/15 bg-signal-green/5 px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-signal-green';
+                liveState.innerHTML = '<span class="h-1.5 w-1.5 rounded-full bg-signal-green"></span> Live';
+            }
 
             actualizarContadores(data.alerts || []);
             renderAlertas(data.alerts || []);
