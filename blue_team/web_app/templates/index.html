@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#080b12">
-    <title>NexusSIEM | Blue Team Console</title>
+    <meta name="theme-color" content="#070a10">
+    <title>NexusSIEM | Security Operations</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -13,60 +13,70 @@
                 extend: {
                     colors: {
                         nexus: {
-                            950: '#080b12',
-                            900: '#0c1018',
-                            850: '#111722',
+                            950: '#070a10',
+                            900: '#0b0f17',
+                            850: '#101621',
                             800: '#151c28',
-                            700: '#202938',
-                            600: '#2b3749',
-                            500: '#526277',
-                            400: '#8795a9',
-                            300: '#b9c4d3',
-                            200: '#dbe2eb',
-                            100: '#eef2f7'
+                            700: '#202b3a',
+                            600: '#2b394b',
+                            500: '#506075',
+                            400: '#7f8da1',
+                            300: '#b2becf',
+                            200: '#d7dee8',
+                            100: '#f0f4f8'
                         },
                         signal: {
-                            green: '#32d583',
-                            amber: '#f5b94c',
-                            red: '#ff5d73',
-                            blue: '#5ea7ff'
+                            green: '#36d98a',
+                            amber: '#f1b955',
+                            red: '#ff6078',
+                            blue: '#65aaff'
                         }
                     },
                     boxShadow: {
-                        panel: '0 16px 45px rgba(0,0,0,.22)',
-                        glow: '0 0 0 1px rgba(94,167,255,.08), 0 10px 40px rgba(0,0,0,.25)'
+                        panel: '0 18px 55px rgba(0,0,0,.27)',
+                        lift: '0 10px 30px rgba(0,0,0,.18)'
                     }
                 }
             }
         }
     </script>
+
     <style>
-        html { background: #080b12; }
-        body { background:
-            radial-gradient(circle at 85% 0%, rgba(94,167,255,.055), transparent 28%),
-            radial-gradient(circle at 15% 35%, rgba(50,213,131,.035), transparent 24%),
-            #080b12;
+        html { background: #070a10; }
+        body {
+            background:
+                radial-gradient(circle at 82% -6%, rgba(101,170,255,.08), transparent 27%),
+                radial-gradient(circle at 10% 46%, rgba(54,217,138,.035), transparent 25%),
+                #070a10;
         }
+
         ::-webkit-scrollbar { width: 9px; height: 9px; }
-        ::-webkit-scrollbar-track { background: #0c1018; }
-        ::-webkit-scrollbar-thumb { background: #263142; border-radius: 999px; }
-        ::-webkit-scrollbar-thumb:hover { background: #344256; }
+        ::-webkit-scrollbar-track { background: #0b0f17; }
+        ::-webkit-scrollbar-thumb { background: #273345; border-radius: 999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #34445a; }
 
         .grid-bg {
             background-image:
-                linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
-            background-size: 24px 24px;
+                linear-gradient(rgba(255,255,255,.016) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,.016) 1px, transparent 1px);
+            background-size: 26px 26px;
         }
 
-        .scanline {
+        .panel {
+            border: 1px solid rgba(255,255,255,.055);
+            background: rgba(11,15,23,.78);
+            box-shadow: 0 18px 55px rgba(0,0,0,.18);
+            backdrop-filter: blur(14px);
+        }
+
+        .scan {
             background: linear-gradient(
                 to bottom,
-                transparent 0%,
-                rgba(94,167,255,.055) 50%,
-                transparent 100%
+                transparent,
+                rgba(101,170,255,.045),
+                transparent
             );
-            animation: scan 4s linear infinite;
+            animation: scan 5s linear infinite;
         }
 
         @keyframes scan {
@@ -74,415 +84,558 @@
             100% { transform: translateY(120%); }
         }
 
-        .status-dot { box-shadow: 0 0 0 4px rgba(50,213,131,.08), 0 0 15px rgba(50,213,131,.45); }
+        .live-dot {
+            box-shadow:
+                0 0 0 4px rgba(54,217,138,.08),
+                0 0 18px rgba(54,217,138,.45);
+        }
 
-        .action-btn:disabled {
+        .severity-row {
+            position: relative;
+        }
+
+        .severity-row::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            opacity: .9;
+        }
+
+        .severity-critical::before { background: #ff6078; }
+        .severity-warning::before { background: #f1b955; }
+        .severity-info::before { background: #65aaff; }
+
+        .action-card {
+            transition: transform .18s ease, background .18s ease, border-color .18s ease;
+        }
+
+        .action-card:hover {
+            transform: translateY(-2px);
+            background: rgba(16,22,33,.92);
+            border-color: rgba(255,255,255,.09);
+        }
+
+        .action-card:disabled {
             opacity: .55;
             cursor: wait;
+            transform: none;
         }
 
         .toast {
-            animation: toast-in .2s ease-out forwards;
+            animation: toastIn .18s ease-out forwards;
         }
 
-        @keyframes toast-in {
-            from { opacity: 0; transform: translateY(8px); }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
     </style>
+
     <meta http-equiv="refresh" content="15">
 </head>
 
 <body class="min-h-screen text-nexus-100 font-sans antialiased selection:bg-signal-blue/20">
-    <div class="min-h-screen lg:flex">
+<div class="min-h-screen lg:flex">
 
-        <!-- Sidebar -->
-        <aside class="hidden lg:flex lg:w-64 xl:w-72 flex-col border-r border-white/5 bg-nexus-950/90 backdrop-blur-xl">
-            <div class="px-6 py-7 border-b border-white/5">
-                <div class="flex items-center gap-3">
-                    <div class="relative flex h-10 w-10 items-center justify-center rounded-xl border border-signal-blue/20 bg-signal-blue/10">
-                        <div class="absolute inset-1 rounded-lg border border-signal-blue/20"></div>
-                        <svg class="relative h-5 w-5 text-signal-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+    <!-- Desktop navigation -->
+    <aside class="hidden lg:flex lg:w-64 xl:w-72 shrink-0 flex-col border-r border-white/5 bg-nexus-950/90">
+        <div class="border-b border-white/5 px-6 py-7">
+            <div class="flex items-center gap-3">
+                <div class="relative flex h-11 w-11 items-center justify-center rounded-xl border border-signal-blue/20 bg-signal-blue/10">
+                    <div class="absolute inset-1.5 rounded-lg border border-signal-blue/15"></div>
+                    <svg class="relative h-5 w-5 text-signal-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3 5 6v5c0 4.7 2.9 8.7 7 10 4.1-1.3 7-5.3 7-10V6l-7-3Z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.5 12.2 11 13.7l3.7-3.9"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-sm font-bold tracking-[.2em] text-white">NEXUSSIEM</div>
+                    <div class="mt-0.5 text-[9px] uppercase tracking-[.25em] text-nexus-500">Security Operations</div>
+                </div>
+            </div>
+        </div>
+
+        <nav class="flex-1 px-4 py-6">
+            <div class="px-3 pb-3 text-[9px] font-bold uppercase tracking-[.22em] text-nexus-600">Command Center</div>
+
+            <a href="#" class="flex items-center gap-3 rounded-lg border border-white/5 bg-white/[.035] px-3 py-2.5 text-sm text-white">
+                <svg class="h-4 w-4 text-signal-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 13h4l2.5-8L14 19l2.5-6H21"/>
+                </svg>
+                Overview
+            </a>
+
+            <a href="#alerts" class="mt-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-nexus-400 transition hover:bg-white/[.03] hover:text-white">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.6A2 2 0 0 1 18 14.1V11a6 6 0 1 0-12 0v3.1a2 2 0 0 1-.6 1.3L4 17h5m2 0v2a1 1 0 0 0 2 0v-2"/>
+                </svg>
+                Security Events
+            </a>
+
+            <div class="px-3 pb-3 pt-8 text-[9px] font-bold uppercase tracking-[.22em] text-nexus-600">Response</div>
+
+            <a href="#actions" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-nexus-400 transition hover:bg-white/[.03] hover:text-white">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v4m0 10v4M3 12h4m10 0h4M5.6 5.6l2.8 2.8m7.2 7.2 2.8 2.8m0-12.8-2.8 2.8m-7.2 7.2-2.8 2.8"/>
+                </svg>
+                Defense Actions
+            </a>
+
+            <div class="mt-7 rounded-xl border border-white/5 bg-nexus-900/70 p-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-[9px] font-semibold uppercase tracking-[.18em] text-nexus-600">Node</span>
+                    <span class="inline-flex items-center gap-1.5 rounded-full border border-signal-green/15 bg-signal-green/5 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-signal-green">
+                        <span class="h-1.5 w-1.5 rounded-full bg-signal-green"></span>
+                        Online
+                    </span>
+                </div>
+                <div class="mt-3 font-mono text-xs text-nexus-300">BlueTeam / Azure</div>
+                <div class="mt-1 text-[10px] leading-4 text-nexus-600">Linux defensive node</div>
+            </div>
+        </nav>
+
+        <div class="border-t border-white/5 px-6 py-5">
+            <div class="font-mono text-[9px] tracking-[.12em] text-nexus-600">NXS // DEFENSIVE OPERATIONS</div>
+            <div class="mt-1 font-mono text-[9px] text-nexus-700">AUTOMATED RESPONSE PLATFORM</div>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="min-w-0 flex-1">
+        <header class="sticky top-0 z-30 border-b border-white/5 bg-nexus-950/85 backdrop-blur-xl">
+            <div class="mx-auto flex max-w-[1650px] items-center justify-between px-5 py-4 sm:px-7 lg:px-9">
+                <div class="flex items-center gap-4">
+                    <div class="lg:hidden flex h-9 w-9 items-center justify-center rounded-lg border border-white/5 bg-white/[.025]">
+                        <svg class="h-4 w-4 text-signal-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 3 5 6v5c0 4.7 2.9 8.7 7 10 4.1-1.3 7-5.3 7-10V6l-7-3Z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.5 12.2 11 13.7l3.7-3.9"/>
                         </svg>
                     </div>
                     <div>
-                        <div class="text-sm font-semibold tracking-[.2em] text-white">NEXUSSIEM</div>
-                        <div class="mt-0.5 text-[10px] uppercase tracking-[.22em] text-nexus-500">Blue Team Console</div>
+                        <div class="text-[9px] font-semibold uppercase tracking-[.22em] text-nexus-600">Security Operations Center</div>
+                        <h1 class="mt-1 text-base font-semibold tracking-tight text-white sm:text-lg">Blue Team Command Center</h1>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 sm:gap-5">
+                    <div class="hidden md:block text-right">
+                        <div class="text-[9px] uppercase tracking-[.18em] text-nexus-600">Environment</div>
+                        <div class="mt-1 font-mono text-[10px] text-nexus-300">AZURE / UBUNTU / PUBLIC NODE</div>
+                    </div>
+                    <div class="flex items-center gap-2 rounded-full border border-signal-green/15 bg-signal-green/[.045] px-3 py-2">
+                        <span class="live-dot h-2 w-2 rounded-full bg-signal-green"></span>
+                        <span class="text-[9px] font-bold uppercase tracking-[.15em] text-signal-green">Operational</span>
                     </div>
                 </div>
             </div>
+        </header>
 
-            <nav class="flex-1 px-4 py-6">
-                <div class="px-3 pb-3 text-[10px] font-semibold uppercase tracking-[.2em] text-nexus-600">Monitor</div>
-                <a href="#" class="mb-1 flex items-center gap-3 rounded-lg border border-white/5 bg-white/[.035] px-3 py-2.5 text-sm text-white">
-                    <svg class="h-4 w-4 text-signal-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 13h4l2.5-8L14 19l2.5-6H21"/>
-                    </svg>
-                    Overview
-                </a>
-                <a href="#alerts" class="mb-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-nexus-400 transition hover:bg-white/[.03] hover:text-white">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.6A2 2 0 0 1 18 14.1V11a6 6 0 1 0-12 0v3.1a2 2 0 0 1-.6 1.3L4 17h5m2 0v2a1 1 0 0 0 2 0v-2"/>
-                    </svg>
-                    Security Events
-                </a>
-
-                <div class="px-3 pb-3 pt-7 text-[10px] font-semibold uppercase tracking-[.2em] text-nexus-600">Response</div>
-                <a href="#actions" class="mb-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-nexus-400 transition hover:bg-white/[.03] hover:text-white">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v4m0 10v4M3 12h4m10 0h4M5.6 5.6l2.8 2.8m7.2 7.2 2.8 2.8m0-12.8-2.8 2.8m-7.2 7.2-2.8 2.8"/>
-                    </svg>
-                    Defense Actions
-                </a>
-
-                <div class="mt-8 rounded-xl border border-white/5 bg-nexus-900/70 p-4">
-                    <div class="flex items-center justify-between">
-                        <span class="text-[10px] uppercase tracking-[.16em] text-nexus-500">Deployment</span>
-                        <span class="rounded-full border border-signal-green/20 bg-signal-green/5 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-signal-green">Online</span>
-                    </div>
-                    <div class="mt-3 font-mono text-xs text-nexus-300">Azure / BlueTeam</div>
-                    <div class="mt-1 text-[11px] text-nexus-500">NexusSIEM defensive node</div>
-                </div>
-            </nav>
-
-            <div class="border-t border-white/5 px-6 py-5 text-[10px] text-nexus-600">
-                NEXUSSIEM // DEFENSIVE OPERATIONS
+        <div class="relative grid-bg">
+            <div class="pointer-events-none absolute inset-0 overflow-hidden opacity-30">
+                <div class="scan h-40 w-full"></div>
             </div>
-        </aside>
 
-        <!-- Main -->
-        <main class="min-w-0 flex-1">
-            <div class="pointer-events-none fixed inset-x-0 top-0 z-0 h-px bg-gradient-to-r from-transparent via-signal-blue/40 to-transparent"></div>
+            <div class="relative mx-auto max-w-[1650px] space-y-6 px-5 py-6 sm:px-7 lg:px-9 lg:py-8">
 
-            <header class="sticky top-0 z-20 border-b border-white/5 bg-nexus-950/85 backdrop-blur-xl">
-                <div class="mx-auto flex max-w-[1600px] items-center justify-between px-5 py-4 sm:px-7 lg:px-9">
-                    <div>
-                        <div class="text-[10px] uppercase tracking-[.22em] text-nexus-600">Security Operations Center</div>
-                        <h1 class="mt-1 text-lg font-semibold tracking-tight text-white">Blue Team Overview</h1>
+                <!-- Command overview -->
+                <section class="panel overflow-hidden rounded-2xl">
+                    <div class="grid xl:grid-cols-[1fr_auto]">
+                        <div class="p-6 sm:p-8">
+                            <div class="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[.24em] text-signal-blue">
+                                <span class="h-1.5 w-1.5 rounded-full bg-signal-blue shadow-[0_0_10px_rgba(101,170,255,.55)]"></span>
+                                Defensive Monitoring
+                            </div>
+
+                            <h2 class="mt-4 max-w-3xl text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                                Visibility first. Response ready.
+                            </h2>
+
+                            <p class="mt-3 max-w-2xl text-sm leading-6 text-nexus-400">
+                                NexusSIEM centraliza telemetría, detección y respuesta sobre el nodo BlueTeam.
+                                Los eventos recientes permanecen disponibles para análisis operativo.
+                            </p>
+
+                            <div class="mt-6 flex flex-wrap gap-2">
+                                <span class="rounded-md border border-white/5 bg-white/[.025] px-2.5 py-1.5 font-mono text-[9px] text-nexus-500">FAIL2BAN</span>
+                                <span class="rounded-md border border-white/5 bg-white/[.025] px-2.5 py-1.5 font-mono text-[9px] text-nexus-500">FIREWALL</span>
+                                <span class="rounded-md border border-white/5 bg-white/[.025] px-2.5 py-1.5 font-mono text-[9px] text-nexus-500">ATOM</span>
+                                <span class="rounded-md border border-white/5 bg-white/[.025] px-2.5 py-1.5 font-mono text-[9px] text-nexus-500">NETWORK IDS</span>
+                            </div>
+                        </div>
+
+                        <div class="flex min-w-[290px] flex-col justify-between border-t border-white/5 bg-black/10 p-6 xl:border-l xl:border-t-0 sm:p-8">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[9px] font-semibold uppercase tracking-[.2em] text-nexus-600">Telemetry</span>
+                                <span class="font-mono text-[10px] text-signal-green">STREAMING</span>
+                            </div>
+
+                            <div class="mt-6">
+                                <div class="flex items-end gap-3">
+                                    <div class="text-4xl font-semibold tracking-tight text-white">{{ ns.total if ns is defined else alertas|length }}</div>
+                                    <div class="pb-1 text-[10px] uppercase tracking-[.14em] text-nexus-600">events buffered</div>
+                                </div>
+                                <div class="mt-4 flex h-2 overflow-hidden rounded-full bg-nexus-800">
+                                    {% set total_events = alertas|length %}
+                                    {% if total_events > 0 %}
+                                        <div class="h-full bg-signal-red" style="width: {{ (ns.critical / total_events * 100)|round(1) }}%"></div>
+                                        <div class="h-full bg-signal-amber" style="width: {{ (ns.warning / total_events * 100)|round(1) }}%"></div>
+                                        <div class="h-full bg-signal-blue" style="width: {{ (ns.info / total_events * 100)|round(1) }}%"></div>
+                                    {% else %}
+                                        <div class="h-full w-full bg-signal-green/50"></div>
+                                    {% endif %}
+                                </div>
+                                <div class="mt-3 grid grid-cols-3 gap-3 text-[9px] font-mono">
+                                    <span class="text-signal-red">{{ ns.critical }} CRIT</span>
+                                    <span class="text-signal-amber">{{ ns.warning }} WARN</span>
+                                    <span class="text-signal-blue">{{ ns.info }} INFO</span>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 flex items-center justify-between border-t border-white/5 pt-4">
+                                <span class="text-[9px] uppercase tracking-[.15em] text-nexus-600">Auto refresh</span>
+                                <span class="font-mono text-[10px] text-nexus-300">15 SEC</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-4">
-                        <div class="hidden sm:block text-right">
-                            <div class="text-[10px] uppercase tracking-[.18em] text-nexus-600">Environment</div>
-                            <div class="mt-1 font-mono text-xs text-nexus-300">AZURE / LINUX</div>
+                </section>
+
+                {% set ns = namespace(total=0, critical=0, warning=0, info=0, blocked=0) %}
+                {% for alerta in alertas %}
+                    {% set ns.total = ns.total + 1 %}
+                    {% if alerta.nivel == 'CRITICAL' %}{% set ns.critical = ns.critical + 1 %}{% endif %}
+                    {% if alerta.nivel == 'WARNING' %}{% set ns.warning = ns.warning + 1 %}{% endif %}
+                    {% if alerta.nivel == 'INFO' %}{% set ns.info = ns.info + 1 %}{% endif %}
+                    {% if alerta.accion and 'bloque' in alerta.accion|lower %}{% set ns.blocked = ns.blocked + 1 %}{% endif %}
+                {% endfor %}
+
+                <!-- Metrics -->
+                <section class="grid grid-cols-2 gap-4 xl:grid-cols-4">
+                    <div class="panel rounded-xl p-5 transition hover:-translate-y-0.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[9px] font-bold uppercase tracking-[.18em] text-nexus-600">Total Events</span>
+                            <span class="font-mono text-[9px] text-signal-blue">BUFFER</span>
                         </div>
-                        <div class="flex items-center gap-2 rounded-full border border-signal-green/15 bg-signal-green/[.045] px-3 py-2">
-                            <span class="status-dot h-2 w-2 rounded-full bg-signal-green"></span>
-                            <span class="text-[10px] font-semibold uppercase tracking-[.16em] text-signal-green">Operational</span>
-                        </div>
+                        <div class="mt-4 text-3xl font-semibold tracking-tight text-white">{{ ns.total }}</div>
+                        <div class="mt-2 text-[10px] text-nexus-600">Eventos recientes en memoria</div>
                     </div>
-                </div>
-            </header>
 
-            <div class="relative grid-bg">
-                <div class="pointer-events-none absolute inset-0 overflow-hidden opacity-30">
-                    <div class="scanline h-32 w-full"></div>
-                </div>
-
-                <div class="relative mx-auto max-w-[1600px] space-y-6 px-5 py-6 sm:px-7 lg:px-9 lg:py-8">
-
-                    <!-- Hero -->
-                    <section class="overflow-hidden rounded-2xl border border-white/5 bg-nexus-900/75 shadow-glow">
-                        <div class="flex flex-col justify-between gap-6 p-6 sm:p-7 xl:flex-row xl:items-end">
-                            <div>
-                                <div class="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.22em] text-signal-blue">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-signal-blue"></span>
-                                    Defensive Monitoring
-                                </div>
-                                <h2 class="max-w-3xl text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-                                    Security posture at a glance.
-                                </h2>
-                                <p class="mt-3 max-w-2xl text-sm leading-6 text-nexus-400">
-                                    Eventos, sensores y acciones de respuesta centralizados en una sola consola.
-                                    Las alertas se actualizan automáticamente cada 15 segundos.
-                                </p>
-                            </div>
-                            <div class="rounded-xl border border-white/5 bg-black/15 px-4 py-3 xl:min-w-64">
-                                <div class="flex items-center justify-between gap-6">
-                                    <span class="text-[10px] uppercase tracking-[.18em] text-nexus-600">Telemetry</span>
-                                    <span class="font-mono text-xs text-signal-green">LIVE</span>
-                                </div>
-                                <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-nexus-800">
-                                    <div class="h-full w-full rounded-full bg-signal-green/70"></div>
-                                </div>
-                                <div class="mt-2 flex justify-between text-[10px] text-nexus-600">
-                                    <span>Refresh</span>
-                                    <span>15s</span>
-                                </div>
-                            </div>
+                    <div class="panel rounded-xl border-signal-red/10 p-5 transition hover:-translate-y-0.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[9px] font-bold uppercase tracking-[.18em] text-nexus-600">Critical</span>
+                            <span class="h-2 w-2 rounded-full bg-signal-red shadow-[0_0_12px_rgba(255,96,120,.4)]"></span>
                         </div>
-                    </section>
+                        <div class="mt-4 text-3xl font-semibold tracking-tight text-white">{{ ns.critical }}</div>
+                        <div class="mt-2 text-[10px] text-nexus-600">Prioridad inmediata</div>
+                    </div>
 
-                    {% set ns = namespace(total=0, critical=0, warning=0, info=0, blocked=0) %}
-                    {% for alerta in alertas %}
-                        {% set ns.total = ns.total + 1 %}
-                        {% if alerta.nivel == 'CRITICAL' %}{% set ns.critical = ns.critical + 1 %}{% endif %}
-                        {% if alerta.nivel == 'WARNING' %}{% set ns.warning = ns.warning + 1 %}{% endif %}
-                        {% if alerta.nivel == 'INFO' %}{% set ns.info = ns.info + 1 %}{% endif %}
-                        {% if alerta.accion and 'bloque' in alerta.accion|lower %}{% set ns.blocked = ns.blocked + 1 %}{% endif %}
-                    {% endfor %}
-
-                    <!-- Metrics -->
-                    <section class="grid grid-cols-2 gap-4 xl:grid-cols-4">
-                        <div class="rounded-xl border border-white/5 bg-nexus-900/75 p-5 shadow-panel">
-                            <div class="flex items-start justify-between">
-                                <span class="text-[10px] uppercase tracking-[.18em] text-nexus-600">Total Events</span>
-                                <span class="font-mono text-[10px] text-signal-blue">ALL</span>
-                            </div>
-                            <div class="mt-4 text-3xl font-semibold tracking-tight text-white">{{ ns.total }}</div>
-                            <div class="mt-2 text-xs text-nexus-500">Últimos eventos en memoria</div>
+                    <div class="panel rounded-xl border-signal-amber/10 p-5 transition hover:-translate-y-0.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[9px] font-bold uppercase tracking-[.18em] text-nexus-600">Warnings</span>
+                            <span class="h-2 w-2 rounded-full bg-signal-amber shadow-[0_0_12px_rgba(241,185,85,.35)]"></span>
                         </div>
+                        <div class="mt-4 text-3xl font-semibold tracking-tight text-white">{{ ns.warning }}</div>
+                        <div class="mt-2 text-[10px] text-nexus-600">Actividad potencialmente riesgosa</div>
+                    </div>
 
-                        <div class="rounded-xl border border-signal-red/10 bg-nexus-900/75 p-5 shadow-panel">
-                            <div class="flex items-start justify-between">
-                                <span class="text-[10px] uppercase tracking-[.18em] text-nexus-600">Critical</span>
-                                <span class="h-2 w-2 rounded-full bg-signal-red shadow-[0_0_12px_rgba(255,93,115,.45)]"></span>
-                            </div>
-                            <div class="mt-4 text-3xl font-semibold tracking-tight text-white">{{ ns.critical }}</div>
-                            <div class="mt-2 text-xs text-nexus-500">Requieren respuesta prioritaria</div>
+                    <div class="panel rounded-xl border-signal-green/10 p-5 transition hover:-translate-y-0.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[9px] font-bold uppercase tracking-[.18em] text-nexus-600">Contained</span>
+                            <span class="h-2 w-2 rounded-full bg-signal-green shadow-[0_0_12px_rgba(54,217,138,.35)]"></span>
                         </div>
+                        <div class="mt-4 text-3xl font-semibold tracking-tight text-white">{{ ns.blocked }}</div>
+                        <div class="mt-2 text-[10px] text-nexus-600">Bloqueos registrados</div>
+                    </div>
+                </section>
 
-                        <div class="rounded-xl border border-signal-amber/10 bg-nexus-900/75 p-5 shadow-panel">
-                            <div class="flex items-start justify-between">
-                                <span class="text-[10px] uppercase tracking-[.18em] text-nexus-600">Warnings</span>
-                                <span class="h-2 w-2 rounded-full bg-signal-amber shadow-[0_0_12px_rgba(245,185,76,.35)]"></span>
-                            </div>
-                            <div class="mt-4 text-3xl font-semibold tracking-tight text-white">{{ ns.warning }}</div>
-                            <div class="mt-2 text-xs text-nexus-500">Actividad potencialmente riesgosa</div>
-                        </div>
-
-                        <div class="rounded-xl border border-signal-green/10 bg-nexus-900/75 p-5 shadow-panel">
-                            <div class="flex items-start justify-between">
-                                <span class="text-[10px] uppercase tracking-[.18em] text-nexus-600">Blocked</span>
-                                <span class="h-2 w-2 rounded-full bg-signal-green shadow-[0_0_12px_rgba(50,213,131,.35)]"></span>
-                            </div>
-                            <div class="mt-4 text-3xl font-semibold tracking-tight text-white">{{ ns.blocked }}</div>
-                            <div class="mt-2 text-xs text-nexus-500">Acciones de contención ejecutadas</div>
-                        </div>
-                    </section>
-
+                <!-- Operational split -->
+                <section class="grid gap-6 xl:grid-cols-[1.4fr_.8fr]">
                     <!-- Actions -->
-                    <section id="actions" class="rounded-2xl border border-white/5 bg-nexus-900/75 shadow-panel">
-                        <div class="border-b border-white/5 px-5 py-5 sm:px-6">
-                            <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                                <div>
-                                    <div class="text-[10px] uppercase tracking-[.2em] text-nexus-600">Response Center</div>
-                                    <h3 class="mt-1 text-base font-semibold text-white">Defense Actions</h3>
-                                </div>
-                                <div class="font-mono text-[10px] text-nexus-600">AUTHORIZED ADMIN ACTIONS</div>
+                    <div id="actions" class="panel overflow-hidden rounded-2xl">
+                        <div class="flex flex-col justify-between gap-3 border-b border-white/5 px-5 py-5 sm:flex-row sm:items-end sm:px-6">
+                            <div>
+                                <div class="text-[9px] font-bold uppercase tracking-[.22em] text-nexus-600">Response Center</div>
+                                <h3 class="mt-1 text-base font-semibold text-white">Defensive Playbooks</h3>
                             </div>
+                            <div class="font-mono text-[9px] text-nexus-600">ADMINISTRATIVE CONTROL</div>
                         </div>
 
-                        <div class="grid gap-px overflow-hidden rounded-b-2xl bg-white/5 md:grid-cols-3">
-                            <button onclick="ejecutarAccion('firewall')" class="action-btn group bg-nexus-900 p-5 text-left transition hover:bg-nexus-850">
+                        <div class="grid gap-4 p-5 sm:p-6 md:grid-cols-3">
+                            <button onclick="ejecutarAccion('firewall')" class="action-btn action-card rounded-xl border border-white/5 bg-white/[.018] p-5 text-left">
                                 <div class="flex items-start justify-between">
                                     <div class="flex h-10 w-10 items-center justify-center rounded-lg border border-signal-blue/15 bg-signal-blue/5 text-signal-blue">
-                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 3 5 6v5c0 4.7 2.9 8.7 7 10 4.1-1.3 7-5.3 7-10V6l-7-3Z"/>
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6"/>
                                         </svg>
                                     </div>
-                                    <span class="text-[10px] font-mono text-nexus-600 transition group-hover:text-signal-blue">01</span>
+                                    <span class="font-mono text-[9px] text-nexus-600">FW-01</span>
                                 </div>
                                 <div class="mt-5 text-sm font-semibold text-white">Firewall Hardening</div>
-                                <p class="mt-1.5 text-xs leading-5 text-nexus-500">Aplica las reglas defensivas del firewall del nodo.</p>
-                                <div class="mt-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-nexus-600 group-hover:text-signal-blue">
-                                    Execute
-                                    <span>→</span>
+                                <p class="mt-1.5 text-[11px] leading-5 text-nexus-500">Aplicar baseline defensivo y endurecer la superficie de red.</p>
+                                <div class="mt-4 flex items-center justify-between">
+                                    <span class="rounded-md bg-signal-blue/5 px-2 py-1 text-[8px] font-semibold uppercase tracking-wider text-signal-blue">Containment</span>
+                                    <span class="text-xs text-nexus-600 transition group-hover:text-signal-blue">→</span>
                                 </div>
                             </button>
 
-                            <button onclick="ejecutarAccion('audit')" class="action-btn group bg-nexus-900 p-5 text-left transition hover:bg-nexus-850">
+                            <button onclick="ejecutarAccion('audit')" class="action-btn action-card rounded-xl border border-white/5 bg-white/[.018] p-5 text-left">
                                 <div class="flex items-start justify-between">
                                     <div class="flex h-10 w-10 items-center justify-center rounded-lg border border-signal-green/15 bg-signal-green/5 text-signal-green">
-                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 3h6m-7 4h8M7 21h10a2 2 0 0 0 2-2V7H5v12a2 2 0 0 0 2 2Z"/>
                                             <path stroke-linecap="round" stroke-linejoin="round" d="m9 14 2 2 4-4"/>
                                         </svg>
                                     </div>
-                                    <span class="text-[10px] font-mono text-nexus-600 transition group-hover:text-signal-green">02</span>
+                                    <span class="font-mono text-[9px] text-nexus-600">AT-02</span>
                                 </div>
                                 <div class="mt-5 text-sm font-semibold text-white">Run Atom Audit</div>
-                                <p class="mt-1.5 text-xs leading-5 text-nexus-500">Lanza la auditoría de postura de seguridad del sistema.</p>
-                                <div class="mt-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-nexus-600 group-hover:text-signal-green">
-                                    Execute
-                                    <span>→</span>
+                                <p class="mt-1.5 text-[11px] leading-5 text-nexus-500">Ejecutar revisión automatizada de la postura de seguridad.</p>
+                                <div class="mt-4 flex items-center justify-between">
+                                    <span class="rounded-md bg-signal-green/5 px-2 py-1 text-[8px] font-semibold uppercase tracking-wider text-signal-green">Audit</span>
+                                    <span class="text-xs text-nexus-600">→</span>
                                 </div>
                             </button>
 
-                            <button onclick="ejecutarAccion('sniffer')" class="action-btn group bg-nexus-900 p-5 text-left transition hover:bg-nexus-850">
+                            <button onclick="ejecutarAccion('sniffer')" class="action-btn action-card rounded-xl border border-white/5 bg-white/[.018] p-5 text-left">
                                 <div class="flex items-start justify-between">
                                     <div class="flex h-10 w-10 items-center justify-center rounded-lg border border-signal-amber/15 bg-signal-amber/5 text-signal-amber">
-                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M4 12s3-5 8-5 8 5 8 5-3 5-8 5-8-5-8-5Z"/>
-                                            <circle cx="12" cy="12" r="2.2" />
+                                            <circle cx="12" cy="12" r="2.2"/>
                                         </svg>
                                     </div>
-                                    <span class="text-[10px] font-mono text-nexus-600 transition group-hover:text-signal-amber">03</span>
+                                    <span class="font-mono text-[9px] text-nexus-600">IDS-03</span>
                                 </div>
                                 <div class="mt-5 text-sm font-semibold text-white">Network IDS</div>
-                                <p class="mt-1.5 text-xs leading-5 text-nexus-500">Activa el sniffer defensivo para inspección del tráfico.</p>
-                                <div class="mt-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-nexus-600 group-hover:text-signal-amber">
-                                    Execute
-                                    <span>→</span>
+                                <p class="mt-1.5 text-[11px] leading-5 text-nexus-500">Inspeccionar tráfico de red y detectar actividad anómala.</p>
+                                <div class="mt-4 flex items-center justify-between">
+                                    <span class="rounded-md bg-signal-amber/5 px-2 py-1 text-[8px] font-semibold uppercase tracking-wider text-signal-amber">Detect</span>
+                                    <span class="text-xs text-nexus-600">→</span>
                                 </div>
                             </button>
                         </div>
-                    </section>
+                    </div>
 
-                    <!-- Alerts -->
-                    <section id="alerts" class="overflow-hidden rounded-2xl border border-white/5 bg-nexus-900/75 shadow-panel">
-                        <div class="border-b border-white/5 px-5 py-5 sm:px-6">
-                            <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-                                <div>
-                                    <div class="text-[10px] uppercase tracking-[.2em] text-nexus-600">Telemetry Stream</div>
-                                    <div class="mt-1 flex items-center gap-3">
-                                        <h3 class="text-base font-semibold text-white">Security Events</h3>
-                                        <span class="rounded-full border border-signal-green/15 bg-signal-green/5 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-signal-green">LIVE</span>
+                    <!-- Subsystems -->
+                    <div class="panel rounded-2xl p-5 sm:p-6">
+                        <div class="text-[9px] font-bold uppercase tracking-[.22em] text-nexus-600">Subsystems</div>
+                        <h3 class="mt-1 text-base font-semibold text-white">Defensive Stack</h3>
+
+                        <div class="mt-5 space-y-3">
+                            <div class="rounded-xl border border-white/5 bg-white/[.018] p-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <span class="h-2 w-2 rounded-full bg-signal-green"></span>
+                                        <span class="text-xs font-medium text-nexus-200">NexusSIEM API</span>
                                     </div>
+                                    <span class="font-mono text-[9px] text-signal-green">READY</span>
                                 </div>
-                                <div class="flex flex-wrap items-center gap-3 text-[10px] text-nexus-600">
-                                    <span class="font-mono">MAX 50 EVENTS</span>
-                                    <span class="h-1 w-1 rounded-full bg-nexus-700"></span>
-                                    <span class="font-mono">AUTO-REFRESH 15S</span>
+                                <div class="mt-2 pl-5 text-[10px] text-nexus-600">Flask administrative interface</div>
+                            </div>
+
+                            <div class="rounded-xl border border-white/5 bg-white/[.018] p-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <span class="h-2 w-2 rounded-full bg-signal-green"></span>
+                                        <span class="text-xs font-medium text-nexus-200">Atom Framework</span>
+                                    </div>
+                                    <span class="font-mono text-[9px] text-signal-green">READY</span>
                                 </div>
+                                <div class="mt-2 pl-5 text-[10px] text-nexus-600">Automated system audit launcher</div>
+                            </div>
+
+                            <div class="rounded-xl border border-white/5 bg-white/[.018] p-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <span class="h-2 w-2 rounded-full bg-signal-green"></span>
+                                        <span class="text-xs font-medium text-nexus-200">Microsoft Teams</span>
+                                    </div>
+                                    <span class="font-mono text-[9px] text-signal-green">LINKED</span>
+                                </div>
+                                <div class="mt-2 pl-5 text-[10px] text-nexus-600">Security alert notification channel</div>
+                            </div>
+
+                            <div class="rounded-xl border border-white/5 bg-white/[.018] p-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <span class="h-2 w-2 rounded-full bg-signal-green"></span>
+                                        <span class="text-xs font-medium text-nexus-200">Firewall Response</span>
+                                    </div>
+                                    <span class="font-mono text-[9px] text-signal-green">ARMED</span>
+                                </div>
+                                <div class="mt-2 pl-5 text-[10px] text-nexus-600">Automated IP containment via iptables</div>
                             </div>
                         </div>
+                    </div>
+                </section>
 
-                        <div class="overflow-x-auto">
-                            <table class="w-full min-w-[900px] text-left">
-                                <thead>
-                                    <tr class="border-b border-white/5 bg-black/10">
-                                        <th class="px-5 py-3.5 text-[9px] font-semibold uppercase tracking-[.18em] text-nexus-600">Time</th>
-                                        <th class="px-5 py-3.5 text-[9px] font-semibold uppercase tracking-[.18em] text-nexus-600">Sensor</th>
-                                        <th class="px-5 py-3.5 text-[9px] font-semibold uppercase tracking-[.18em] text-nexus-600">Severity</th>
-                                        <th class="px-5 py-3.5 text-[9px] font-semibold uppercase tracking-[.18em] text-nexus-600">Event</th>
-                                        <th class="px-5 py-3.5 text-[9px] font-semibold uppercase tracking-[.18em] text-nexus-600">Origin</th>
-                                        <th class="px-5 py-3.5 text-[9px] font-semibold uppercase tracking-[.18em] text-nexus-600">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-white/5">
-                                    {% if alertas %}
-                                        {% for alerta in alertas %}
-                                        <tr class="group transition hover:bg-white/[.018]">
-                                            <td class="whitespace-nowrap px-5 py-4 align-top">
-                                                <div class="font-mono text-[10px] text-nexus-400">{{ alerta.tiempo }}</div>
-                                            </td>
-                                            <td class="px-5 py-4 align-top">
-                                                <div class="text-xs font-medium text-nexus-200">{{ alerta.fuente }}</div>
-                                            </td>
-                                            <td class="px-5 py-4 align-top">
-                                                {% if alerta.nivel == 'CRITICAL' %}
-                                                    <span class="inline-flex items-center gap-2 rounded-md border border-signal-red/15 bg-signal-red/5 px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wider text-signal-red">
-                                                        <span class="h-1.5 w-1.5 rounded-full bg-signal-red"></span> Critical
-                                                    </span>
-                                                {% elif alerta.nivel == 'WARNING' %}
-                                                    <span class="inline-flex items-center gap-2 rounded-md border border-signal-amber/15 bg-signal-amber/5 px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wider text-signal-amber">
-                                                        <span class="h-1.5 w-1.5 rounded-full bg-signal-amber"></span> Warning
-                                                    </span>
-                                                {% else %}
-                                                    <span class="inline-flex items-center gap-2 rounded-md border border-signal-blue/15 bg-signal-blue/5 px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wider text-signal-blue">
-                                                        <span class="h-1.5 w-1.5 rounded-full bg-signal-blue"></span> Info
-                                                    </span>
-                                                {% endif %}
-                                            </td>
-                                            <td class="max-w-xl px-5 py-4 align-top">
-                                                <div class="text-xs leading-5 text-nexus-300">{{ alerta.mensaje }}</div>
-                                            </td>
-                                            <td class="px-5 py-4 align-top">
-                                                <div class="max-w-xs font-mono text-[10px] leading-5 text-nexus-500">{{ alerta.ubicacion if alerta.ubicacion else 'N/A' }}</div>
-                                            </td>
-                                            <td class="px-5 py-4 align-top">
-                                                <div class="font-mono text-[10px] leading-5 text-nexus-400">{{ alerta.accion }}</div>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    {% else %}
-                                        <tr>
-                                            <td colspan="6" class="px-5 py-16 text-center">
-                                                <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-signal-green/15 bg-signal-green/5">
-                                                    <svg class="h-5 w-5 text-signal-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5 10 17l9-10"/>
-                                                    </svg>
-                                                </div>
-                                                <div class="mt-4 text-sm font-medium text-nexus-300">No active security events</div>
-                                                <div class="mt-1 text-xs text-nexus-600">NexusSIEM continúa monitoreando el nodo.</div>
-                                            </td>
-                                        </tr>
-                                    {% endif %}
-                                </tbody>
-                            </table>
+                <!-- Event stream -->
+                <section id="alerts" class="panel overflow-hidden rounded-2xl">
+                    <div class="border-b border-white/5 px-5 py-5 sm:px-6">
+                        <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                            <div>
+                                <div class="text-[9px] font-bold uppercase tracking-[.22em] text-nexus-600">Telemetry Stream</div>
+                                <div class="mt-1 flex items-center gap-3">
+                                    <h3 class="text-base font-semibold text-white">Security Events</h3>
+                                    <span class="inline-flex items-center gap-1.5 rounded-full border border-signal-green/15 bg-signal-green/5 px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-signal-green">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-signal-green"></span>
+                                        Live
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-3 font-mono text-[9px] text-nexus-600">
+                                <span>{{ ns.total }} EVENTS</span>
+                                <span class="h-1 w-1 rounded-full bg-nexus-700"></span>
+                                <span>MAX 50</span>
+                                <span class="h-1 w-1 rounded-full bg-nexus-700"></span>
+                                <span>15S REFRESH</span>
+                            </div>
                         </div>
-                    </section>
+                    </div>
 
-                    <footer class="flex flex-col gap-2 border-t border-white/5 py-5 text-[10px] text-nexus-600 sm:flex-row sm:items-center sm:justify-between">
-                        <span class="font-mono">NEXUSSIEM // BLUE TEAM</span>
-                        <span class="font-mono">AUTOMATED DEFENSE NODE</span>
-                    </footer>
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[1000px] text-left">
+                            <thead class="bg-black/10">
+                                <tr class="border-b border-white/5">
+                                    <th class="px-5 py-3.5 text-[8px] font-bold uppercase tracking-[.2em] text-nexus-600">Timestamp</th>
+                                    <th class="px-5 py-3.5 text-[8px] font-bold uppercase tracking-[.2em] text-nexus-600">Sensor</th>
+                                    <th class="px-5 py-3.5 text-[8px] font-bold uppercase tracking-[.2em] text-nexus-600">Severity</th>
+                                    <th class="px-5 py-3.5 text-[8px] font-bold uppercase tracking-[.2em] text-nexus-600">Event</th>
+                                    <th class="px-5 py-3.5 text-[8px] font-bold uppercase tracking-[.2em] text-nexus-600">Origin</th>
+                                    <th class="px-5 py-3.5 text-[8px] font-bold uppercase tracking-[.2em] text-nexus-600">Response</th>
+                                </tr>
+                            </thead>
+
+                            <tbody class="divide-y divide-white/5">
+                                {% if alertas %}
+                                    {% for alerta in alertas %}
+                                    <tr class="severity-row {% if alerta.nivel == 'CRITICAL' %}severity-critical{% elif alerta.nivel == 'WARNING' %}severity-warning{% else %}severity-info{% endif %} transition hover:bg-white/[.02]">
+                                        <td class="whitespace-nowrap px-5 py-4 align-top">
+                                            <div class="font-mono text-[9px] text-nexus-400">{{ alerta.tiempo }}</div>
+                                        </td>
+
+                                        <td class="px-5 py-4 align-top">
+                                            <div class="text-[11px] font-medium text-nexus-200">{{ alerta.fuente }}</div>
+                                        </td>
+
+                                        <td class="px-5 py-4 align-top">
+                                            {% if alerta.nivel == 'CRITICAL' %}
+                                                <span class="inline-flex items-center gap-2 rounded-md border border-signal-red/15 bg-signal-red/5 px-2 py-1.5 text-[8px] font-bold uppercase tracking-wider text-signal-red">
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-signal-red"></span> Critical
+                                                </span>
+                                            {% elif alerta.nivel == 'WARNING' %}
+                                                <span class="inline-flex items-center gap-2 rounded-md border border-signal-amber/15 bg-signal-amber/5 px-2 py-1.5 text-[8px] font-bold uppercase tracking-wider text-signal-amber">
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-signal-amber"></span> Warning
+                                                </span>
+                                            {% else %}
+                                                <span class="inline-flex items-center gap-2 rounded-md border border-signal-blue/15 bg-signal-blue/5 px-2 py-1.5 text-[8px] font-bold uppercase tracking-wider text-signal-blue">
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-signal-blue"></span> Info
+                                                </span>
+                                            {% endif %}
+                                        </td>
+
+                                        <td class="max-w-[520px] px-5 py-4 align-top">
+                                            <div class="text-[11px] leading-5 text-nexus-300">{{ alerta.mensaje }}</div>
+                                        </td>
+
+                                        <td class="px-5 py-4 align-top">
+                                            <div class="max-w-[220px] font-mono text-[9px] leading-5 text-nexus-500">{{ alerta.ubicacion if alerta.ubicacion else 'N/A' }}</div>
+                                        </td>
+
+                                        <td class="px-5 py-4 align-top">
+                                            <div class="font-mono text-[9px] leading-5 text-nexus-400">{{ alerta.accion }}</div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="6" class="px-5 py-20 text-center">
+                                            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-signal-green/15 bg-signal-green/5">
+                                                <svg class="h-6 w-6 text-signal-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5 10 17l9-10"/>
+                                                </svg>
+                                            </div>
+                                            <div class="mt-4 text-sm font-medium text-nexus-300">No security events in the buffer</div>
+                                            <div class="mt-1 text-xs text-nexus-600">NexusSIEM continúa monitorizando el nodo.</div>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <footer class="flex flex-col gap-2 border-t border-white/5 py-5 text-[9px] font-mono text-nexus-700 sm:flex-row sm:items-center sm:justify-between">
+                    <span>NEXUSSIEM // BLUE TEAM COMMAND CENTER</span>
+                    <span>DEFENSIVE OPERATIONS NODE</span>
+                </footer>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div id="toast-container" class="pointer-events-none fixed bottom-5 right-5 z-50 flex w-[min(360px,calc(100vw-40px))] flex-col gap-3"></div>
+
+<script>
+    function escaparHtml(texto) {
+        const div = document.createElement('div');
+        div.textContent = texto ?? '';
+        return div.innerHTML;
+    }
+
+    function mostrarToast(mensaje, tipo = 'info') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+
+        const tono = tipo === 'error'
+            ? 'border-signal-red/20 bg-nexus-900 text-signal-red'
+            : 'border-signal-green/20 bg-nexus-900 text-signal-green';
+
+        toast.className = `toast pointer-events-auto rounded-xl border px-4 py-3 shadow-panel ${tono}`;
+        toast.innerHTML = `
+            <div class="flex items-start gap-3">
+                <div class="mt-1 h-2 w-2 shrink-0 rounded-full bg-current"></div>
+                <div>
+                    <div class="text-[9px] font-bold uppercase tracking-[.16em]">
+                        ${tipo === 'error' ? 'Action failed' : 'Action sent'}
+                    </div>
+                    <div class="mt-1 text-xs leading-5 text-nexus-300">${escaparHtml(mensaje)}</div>
                 </div>
             </div>
-        </main>
-    </div>
+        `;
 
-    <!-- Toast container -->
-    <div id="toast-container" class="pointer-events-none fixed bottom-5 right-5 z-50 flex w-[min(360px,calc(100vw-40px))] flex-col gap-3"></div>
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 4500);
+    }
 
-    <script>
-        function escaparHtml(texto) {
-            const div = document.createElement('div');
-            div.textContent = texto ?? '';
-            return div.innerHTML;
-        }
+    async function ejecutarAccion(herramienta) {
+        const botones = document.querySelectorAll('.action-btn');
+        botones.forEach(b => b.disabled = true);
 
-        function mostrarToast(mensaje, tipo = 'info') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
+        try {
+            const response = await fetch(`/api/run/${herramienta}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin'
+            });
 
-            const tono = tipo === 'error'
-                ? 'border-signal-red/20 bg-nexus-900 text-signal-red'
-                : 'border-signal-green/20 bg-nexus-900 text-signal-green';
+            const data = await response.json().catch(() => ({}));
 
-            toast.className = `toast pointer-events-auto rounded-xl border px-4 py-3 shadow-2xl ${tono}`;
-            toast.innerHTML = `
-                <div class="flex items-start gap-3">
-                    <div class="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-current"></div>
-                    <div>
-                        <div class="text-[10px] font-bold uppercase tracking-[.16em]">${tipo === 'error' ? 'Action failed' : 'Action sent'}</div>
-                        <div class="mt-1 text-xs leading-5 text-nexus-300">${escaparHtml(mensaje)}</div>
-                    </div>
-                </div>
-            `;
-
-            container.appendChild(toast);
-            setTimeout(() => toast.remove(), 4500);
-        }
-
-        async function ejecutarAccion(herramienta) {
-            const botones = document.querySelectorAll('.action-btn');
-            botones.forEach(b => b.disabled = true);
-
-            try {
-                const response = await fetch(`/api/run/${herramienta}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'same-origin'
-                });
-
-                const data = await response.json().catch(() => ({}));
-
-                if (!response.ok) {
-                    throw new Error(data.error || `HTTP ${response.status}`);
-                }
-
-                mostrarToast(data.message || 'La acción fue enviada correctamente.');
-                setTimeout(() => location.reload(), 900);
-            } catch (error) {
-                mostrarToast(error.message || 'No se pudo ejecutar la acción.', 'error');
-            } finally {
-                botones.forEach(b => b.disabled = false);
+            if (!response.ok) {
+                throw new Error(data.error || `HTTP ${response.status}`);
             }
+
+            mostrarToast(data.message || 'La acción fue enviada correctamente.');
+            setTimeout(() => location.reload(), 900);
+        } catch (error) {
+            mostrarToast(error.message || 'No se pudo ejecutar la acción.', 'error');
+        } finally {
+            botones.forEach(b => b.disabled = false);
         }
-    </script>
+    }
+</script>
 </body>
 </html>
