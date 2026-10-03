@@ -288,6 +288,20 @@ def recibir_alerta():
     return jsonify({"status": "ok"}), 200
 
 
+@app.route("/api/state", methods=["GET"])
+def estado_dashboard():
+    """Entrega el estado vivo del dashboard al operador autenticado."""
+    auth_error = requiere_autenticacion()
+    if auth_error:
+        return auth_error
+
+    return jsonify({
+        "status": "ok",
+        "alerts": alertas_recientes,
+        "audit": cargar_ultimo_reporte_atom(),
+    }), 200
+
+
 @app.route("/api/audit/latest", methods=["GET"])
 def ultimo_reporte_atom():
     """Devuelve el último reporte de Atom al operador autenticado."""
