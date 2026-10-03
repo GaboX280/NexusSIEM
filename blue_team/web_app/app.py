@@ -159,8 +159,8 @@ def ejecutar_herramienta(herramienta):
             mensaje = "Hardening de firewall UFW ejecutado."
             
         elif herramienta == 'audit':
-            script_path = os.path.join(BASE_DIR, 'atom.py')
-            subprocess.Popen(['sudo', 'python', script_path])
+            launcher_path = os.path.join(BASE_DIR, 'atom_launcher.py')
+            subprocess.Popen(['python3', launcher_path])
             mensaje = "Auditoría del sistema iniciada con el framework Atom."
             
         elif herramienta == 'sniffer':

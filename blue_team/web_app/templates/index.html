@@ -3,45 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blue Team | Monitor de Seguridad</title>
-    <!-- Vincula el CSS desde la carpeta estática -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <!-- Refresco automático cada 5 segundos -->
-    <meta http-equiv="refresh" content="5">
+    <title>NexusSIEM | Dashboard de Seguridad</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#0f172a',
+                        cardbg: '#1e293b',
+                        neonred: '#ef4444',
+                        neonyellow: '#f59e0b',
+                        neongreen: '#10b981',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Actualización automática cada 10 segundos -->
+    <meta http-equiv="refresh" content="10">
 </head>
-<body>
-    <div class="container">
-        <header>
-            <h1> Blue Team - Dashboard Activo</h1>
-            <p>Monitor de intrusiones en tiempo real (IDS/IPS)</p>
-        </header>
+<body class="bg-darkbg text-slate-100 min-h-screen font-sans antialiased">
 
-        <table>
-            <thead>
-                <tr>
-                    <th>Timestamp</th>
-                    <th>Nivel</th>
-                    <th>Sensor</th>
-                    <th>Detalle del Ataque</th>
-                    <th>Respuesta del Firewall</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for alerta in alertas %}
-                <tr>
-                    <td>{{ alerta.tiempo }}</td>
-                    <td><span class="badge {{ alerta.nivel }}">{{ alerta.nivel }}</span></td>
-                    <td>{{ alerta.fuente }}</td>
-                    <td>{{ alerta.mensaje }}</td>
-                    <td class="action">{{ alerta.accion }}</td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="5" class="empty">No hay alertas registradas. Sistema seguro.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+    <!-- Header / Navbar -->
+    <header class="bg-cardbg border-b border-slate-800 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <h1 class="text-xl font-bold tracking-wider bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">NexusSIEM</h1>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span class="inline-block w-3 h-3 bg-neongreen rounded-full animate-pulse"></span>
+                <span class="text-xs text-slate-400 font-mono">ESTADO: OPERATIVO (Azure)</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 py-8 space-y-8">
+
+        <!-- Panel de Acciones / Herramientas de Defensa -->
+        <section class="bg-cardbg border border-slate-800 rounded-xl p-6 shadow-xl">
+            <h2 class="text-lg font-semibold mb-4 text-slate-300">
+                Acciones y Contramedidas de Blue Team
+            </h2>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <button onclick="ejecutarAccion('firewall')" class="bg-slate-700 hover:bg-slate-600 border border-slate-600 text-sm font-medium py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2 shadow">
+                    Hardening Firewall
+                </button>
+                <button onclick="ejecutarAccion('audit')" class="bg-slate-700 hover:bg-slate-600 border border-slate-600 text-sm font-medium py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2 shadow">
+                    Ejecutar Framework Atom
+                </button>
+                <button onclick="ejecutarAccion('sniffer')" class="bg-slate-700 hover:bg-slate-600 border border-slate-600 text-sm font-medium py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2 shadow">
+                    Activar Sniffer IDS
+                </button>
+            </div>
+        </section>
+
+        <!-- Tabla de Alertas Recientes -->
+        <section class="bg-cardbg border border-slate-800 rounded-xl p-6 shadow-xl">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-lg font-semibold text-slate-300">
+                    Alertas de Seguridad en Tiempo Real
+                </h2>
+                <span class="text-xs text-slate-400 font-mono">Auto-refresh cada 10s</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-xs text-slate-400 uppercase font-mono">
+                            <th class="py-3 px-4">Timestamp</th>
+                            <th class="py-3 px-4">Sensor / Fuente</th>
+                            <th class="py-3 px-4">Nivel</th>
+                            <th class="py-3 px-4">Detalle del Evento</th>
+                            <th class="py-3 px-4">Ubicación</th>
+                            <th class="py-3 px-4">Acción Firewall</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800 text-sm">
+                        {% if alertas %}
+                            {% for alerta in alertas %}
+                            <tr class="hover:bg-slate-800/50 transition">
+                                <td class="py-3 px-4 font-mono text-xs text-slate-400">{{ alerta.tiempo }}</td>
+                                <td class="py-3 px-4 font-medium text-slate-200">{{ alerta.fuente }}</td>
+                                <td class="py-3 px-4">
+                                    {% if alerta.nivel == 'CRITICAL' %}
+                                        <span class="px-2 py-1 bg-red-500/10 text-neonred border border-red-500/20 rounded-md text-xs font-bold font-mono">CRITICAL</span>
+                                    {% elif alerta.nivel == 'WARNING' %}
+                                        <span class="px-2 py-1 bg-amber-500/10 text-neonyellow border border-amber-500/20 rounded-md text-xs font-bold font-mono">WARNING</span>
+                                    {% else %}
+                                        <span class="px-2 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-md text-xs font-bold font-mono">INFO</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 px-4 text-slate-300">{{ alerta.mensaje }}</td>
+                                <td class="py-3 px-4 font-mono text-xs text-slate-400">{{ alerta.ubicacion if alerta.ubicacion else 'N/A' }}</td>
+                                <td class="py-3 px-4 font-mono text-xs text-slate-300">{{ alerta.accion }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="py-6 text-center text-slate-500 italic">No hay alertas registradas todavía. El sistema está vigilando...</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- JavaScript para disparar las acciones -->
+    <script>
+        function ejecutarAccion(herramienta) {
+            if (!confirm(`¿Estás seguro de ejecutar la acción: ${herramienta}?`)) return;
+            
+            fetch(`/api/run/${herramienta}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message || 'Acción ejecutada con éxito');
+                location.reload();
+            })
+            .catch(error => {
+                alert('Error al ejecutar la acción: ' + error);
+            });
+        }
+    </script>
 </body>
 </html>
