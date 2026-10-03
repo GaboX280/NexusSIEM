@@ -32,7 +32,23 @@ def bloquear_ip(ip):
         return f"Error: {e}"
     return "Ya estaba bloqueada"
 
-def enviar_webhook_teams(fuente, nivel, mensaje, accion):
+def obtener_geolocalizacion(ip):
+    """Consulta la ubicación geográfica de la IP usando una API pública y ligera."""
+    if not ip or ip in ["127.0.0.1", "::1", "localhost", "10.0.0.99"]:
+        return "Local / Red Interna"
+    try:
+        response = requests.get(f"http://ip-api.com/json/{ip}?fields=status,country,city", timeout=2)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("status") == "success":
+                pais = data.get("country", "Desconocido")
+                ciudad = data.get("city", "")
+                return f"{pais}, {ciudad}" if ciudad else pais
+    except Exception:
+        pass
+    return "Desconocido"
+
+def enviar_webhook_teams(fuente, nivel, mensaje, accion, ip_atacante=None):
     """Envía una Tarjeta Adaptable (Adaptive Card) válida al flujo de Power Automate en Teams."""
     if not WEBHOOK_URL:
         return
@@ -40,6 +56,9 @@ def enviar_webhook_teams(fuente, nivel, mensaje, accion):
     # Colores y emojis según el nivel de alerta
     color_titulo = "attention" if nivel == "CRITICAL" else ("warning" if nivel == "WARNING" else "accent")
     icono = "🚨" if nivel == "CRITICAL" else ("⚠️" if nivel == "WARNING" else "ℹ️")
+    
+    # Obtener geolocalización limpia usando la IP real
+    ubicacion = obtener_geolocalizacion(ip_atacante) if ip_atacante else "N/A"
     
     # Estructura JSON obligatoria para Tarjetas Adaptables de Teams
     payload = {
@@ -64,7 +83,10 @@ def enviar_webhook_teams(fuente, nivel, mensaje, accion):
                             "facts": [
                                 {"title": "Sensor:", "value": fuente},
                                 {"title": "Detalle:", "value": mensaje},
-                                {"title": "Firewall:", "value": accion}
+                                {"title": "IP Atacante:", "value": ip_atacante if ip_atacante else "N/A"},
+                                {"title": "Geolocalización:", "value": ubicacion},
+                                {"title": "Firewall:", "value": accion},
+                                {"title": "Hora:", "value": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
                             ]
                         }
                     ]
@@ -95,10 +117,13 @@ def recibir_alerta():
     ip_atacante = datos.get("ip_to_block", None)
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    # Obtener geolocalización para el registro del dashboard también
+    ubicacion_atacante = obtener_geolocalizacion(ip_atacante) if ip_atacante else "N/A"
+
     # Bloquea la IP si se proporciona y registra la acción
     accion_tomada = bloquear_ip(ip_atacante) if ip_atacante else "Ninguna"
     if ip_atacante:
-        mensaje_log = f"{mensaje} | Acción: {accion_tomada}"
+        mensaje_log = f"{mensaje} | IP: {ip_atacante} ({ubicacion_atacante}) | Acción: {accion_tomada}"
     else:
         mensaje_log = mensaje
 
@@ -112,7 +137,7 @@ def recibir_alerta():
 
     alertas_recientes.insert(0, {
         "tiempo": timestamp, "fuente": fuente, "nivel": nivel, 
-        "mensaje": mensaje, "accion": accion_tomada
+        "mensaje": mensaje, "accion": accion_tomada, "ubicacion": ubicacion_atacante
     })
     
     if len(alertas_recientes) > 50:
@@ -120,7 +145,7 @@ def recibir_alerta():
 
     # Disparar la notificación a Microsoft Teams si es una alerta importante
     if nivel in ["WARNING", "CRITICAL"]:
-        enviar_webhook_teams(fuente, nivel, mensaje, accion_tomada)
+        enviar_webhook_teams(fuente, nivel, mensaje, accion_tomada, ip_atacante)
 
     return jsonify({"status": "ok"}), 200
 
@@ -134,7 +159,6 @@ def ejecutar_herramienta(herramienta):
             mensaje = "Hardening de firewall UFW ejecutado."
             
         elif herramienta == 'audit':
-            # Apunta directamente a tu framework Atom
             script_path = os.path.join(BASE_DIR, 'atom.py')
             subprocess.Popen(['sudo', 'python', script_path])
             mensaje = "Auditoría del sistema iniciada con el framework Atom."
@@ -147,7 +171,6 @@ def ejecutar_herramienta(herramienta):
         else:
             return jsonify({"error": "Herramienta no reconocida"}), 400
 
-        # Auto-registra la acción en el dashboard para que aparezca en la tabla
         requests.post('http://127.0.0.1:5000/api/alert', json={
             "source": "Web Dashboard",
             "level": "INFO",
@@ -161,7 +184,6 @@ def ejecutar_herramienta(herramienta):
 
 @app.route('/')
 def dashboard():
-    # Flask busca automáticamente index.html dentro de la carpeta 'templates'
     return render_template('index.html', alertas=alertas_recientes)
 
 if __name__ == '__main__':
