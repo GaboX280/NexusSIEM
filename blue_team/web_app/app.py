@@ -144,6 +144,7 @@ def enviar_webhook_teams(fuente, nivel, mensaje, accion, ip_atacante=None):
         "attachments": [
             {
                 "contentType": "application/vnd.microsoft.card.adaptive",
+                "contentUrl": None,
                 "content": {
                     "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
                     "type": "AdaptiveCard",
