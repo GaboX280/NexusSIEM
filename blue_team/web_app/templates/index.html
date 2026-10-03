@@ -272,7 +272,6 @@
         }
     </style>
 
-    <meta http-equiv="refresh" content="15">
 </head>
 
 <body class="min-h-screen text-nexus-100 font-sans antialiased selection:bg-signal-blue/20">
@@ -652,6 +651,7 @@
 
 
                 <!-- Atom audit results -->
+                <!-- Atom audit results -->
                 <section id="audit" class="panel overflow-hidden rounded-2xl reveal" style="--delay: 250ms">
                     <div class="border-b border-white/5 px-5 py-5 sm:px-6">
                         <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
@@ -659,183 +659,23 @@
                                 <div class="text-[9px] font-bold uppercase tracking-[.22em] text-nexus-600">Security Assessment</div>
                                 <div class="mt-1 flex items-center gap-3">
                                     <h3 class="text-base font-semibold text-white">Atom Security Audit</h3>
-                                    {% if reporte_atom %}
-                                        <span class="inline-flex items-center gap-1.5 rounded-full border border-signal-green/15 bg-signal-green/5 px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-signal-green">
-                                            <span class="h-1.5 w-1.5 rounded-full bg-signal-green"></span>
-                                            Latest report
-                                        </span>
-                                    {% else %}
-                                        <span class="inline-flex items-center gap-1.5 rounded-full border border-signal-amber/15 bg-signal-amber/5 px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-signal-amber">
-                                            Waiting
-                                        </span>
-                                    {% endif %}
+                                    <span id="audit-live-state" class="inline-flex items-center gap-1.5 rounded-full border border-signal-amber/15 bg-signal-amber/5 px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-signal-amber">
+                                        Checking
+                                    </span>
                                 </div>
                             </div>
-
-                            {% if reporte_atom %}
-                                <div class="font-mono text-[9px] text-nexus-600">
-                                    {{ reporte_atom.filename }}
-                                </div>
-                            {% endif %}
+                            <div id="audit-file-name" class="font-mono text-[9px] text-nexus-600"></div>
                         </div>
                     </div>
 
-                    {% if reporte_atom %}
-                        {% set audit_summary = reporte_atom.summary %}
-                        {% set audit_status = audit_summary.get('status', {}) %}
-                        {% set audit_score = audit_summary.get('score', 0) %}
-                        {% set audit_rating = audit_summary.get('rating', 'UNKNOWN') %}
-                        {% set audit_total = audit_summary.get('total', reporte_atom.findings|length) %}
-
-                        {% if audit_score >= 80 %}
-                            {% set score_tone = 'signal-green' %}
-                        {% elif audit_score >= 60 %}
-                            {% set score_tone = 'signal-amber' %}
-                        {% else %}
-                            {% set score_tone = 'signal-red' %}
-                        {% endif %}
-
-                        <div class="grid gap-5 border-b border-white/5 p-5 sm:p-6 lg:grid-cols-[280px_1fr]">
-                            <div class="rounded-xl border border-white/5 bg-black/10 p-5">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-[9px] font-bold uppercase tracking-[.2em] text-nexus-600">Security Score</span>
-                                    <span class="font-mono text-[9px] text-nexus-600">ATOM</span>
-                                </div>
-
-                                <div class="mt-5 flex items-end gap-2">
-                                    <span class="metric-number text-5xl font-semibold tracking-tight text-white" data-target="{{ audit_score }}">0</span>
-                                    <span class="pb-2 font-mono text-xs text-nexus-600">/100</span>
-                                </div>
-
-                                <div class="mt-5 h-2 overflow-hidden rounded-full bg-nexus-800">
-                                    <div class="h-full rounded-full bg-{{ score_tone }}" style="width: {{ audit_score }}%"></div>
-                                </div>
-
-                                <div class="mt-4 flex items-center justify-between">
-                                    <span class="text-[9px] uppercase tracking-[.16em] text-nexus-600">Rating</span>
-                                    <span class="font-mono text-[10px] font-semibold text-{{ score_tone }}">{{ audit_rating }}</span>
-                                </div>
-
-                                <div class="mt-4 border-t border-white/5 pt-4 text-[9px] text-nexus-600">
-                                    Generated:
-                                    <span class="font-mono text-nexus-400">{{ reporte_atom.generated or 'N/A' }}</span>
-                                </div>
-                            </div>
-
+                    <div id="audit-content" class="min-h-[220px]">
+                        <div class="flex min-h-[220px] items-center justify-center px-5 py-16 text-center">
                             <div>
-                                <div class="mb-3 flex items-center justify-between">
-                                    <div>
-                                        <div class="text-[9px] font-bold uppercase tracking-[.2em] text-nexus-600">Assessment Summary</div>
-                                        <div class="mt-1 text-xs text-nexus-400">{{ audit_total }} findings returned by {{ audit_summary.get('module', 'Atom') }}</div>
-                                    </div>
-                                </div>
-
-                                <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                                    <div class="rounded-xl border border-signal-green/10 bg-signal-green/[.025] p-4">
-                                        <div class="text-[9px] uppercase tracking-[.16em] text-nexus-600">Pass</div>
-                                        <div class="metric-number mt-3 text-2xl font-semibold text-white" data-target="{{ audit_status.get('PASS', 0) }}">0</div>
-                                    </div>
-
-                                    <div class="rounded-xl border border-signal-amber/10 bg-signal-amber/[.025] p-4">
-                                        <div class="text-[9px] uppercase tracking-[.16em] text-nexus-600">Warning</div>
-                                        <div class="metric-number mt-3 text-2xl font-semibold text-white" data-target="{{ audit_status.get('WARNING', 0) }}">0</div>
-                                    </div>
-
-                                    <div class="rounded-xl border border-signal-red/10 bg-signal-red/[.025] p-4">
-                                        <div class="text-[9px] uppercase tracking-[.16em] text-nexus-600">Fail</div>
-                                        <div class="metric-number mt-3 text-2xl font-semibold text-white" data-target="{{ audit_status.get('FAIL', 0) }}">0</div>
-                                    </div>
-
-                                    <div class="rounded-xl border border-white/5 bg-white/[.018] p-4">
-                                        <div class="text-[9px] uppercase tracking-[.16em] text-nexus-600">Findings</div>
-                                        <div class="metric-number mt-3 text-2xl font-semibold text-white" data-target="{{ audit_total }}">0</div>
-                                    </div>
-                                </div>
-
-                                <div class="mt-4 rounded-xl border border-white/5 bg-white/[.012] p-4">
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-[9px] font-bold uppercase tracking-[.18em] text-nexus-600">Assessment posture</span>
-                                        <span class="font-mono text-[9px] text-{{ score_tone }}">{{ audit_rating }}</span>
-                                    </div>
-                                    <div class="mt-3 text-[11px] leading-5 text-nexus-400">
-                                        Atom evaluó la configuración del nodo y generó un reporte estructurado para revisión del equipo Blue Team.
-                                    </div>
-                                </div>
+                                <div class="mx-auto h-8 w-8 animate-spin rounded-full border border-white/10 border-t-signal-blue"></div>
+                                <div class="mt-4 text-xs text-nexus-500">Consultando el último reporte de Atom...</div>
                             </div>
                         </div>
-
-                        <div class="border-b border-white/5">
-                            <div class="px-5 py-4 sm:px-6">
-                                <div class="text-[9px] font-bold uppercase tracking-[.2em] text-nexus-600">Findings</div>
-                            </div>
-
-                            <div class="divide-y divide-white/5">
-                                {% for finding in reporte_atom.findings %}
-                                    <details class="group bg-white/[.006] transition hover:bg-white/[.012]">
-                                        <summary class="flex cursor-pointer list-none items-center gap-4 px-5 py-4 sm:px-6">
-                                            <div class="w-16 shrink-0 font-mono text-[9px] text-nexus-700">
-                                                {{ '%02d' % loop.index }}
-                                            </div>
-
-                                            <div class="min-w-0 flex-1">
-                                                <div class="truncate text-[11px] font-medium text-nexus-200">{{ finding.get('title', 'Untitled finding') }}</div>
-                                                <div class="mt-1 flex flex-wrap items-center gap-2 text-[9px] text-nexus-600">
-                                                    <span>{{ finding.get('category', 'Uncategorized') }}</span>
-                                                    {% if finding.get('reference') %}
-                                                        <span class="h-1 w-1 rounded-full bg-nexus-700"></span>
-                                                        <span class="font-mono">{{ finding.get('reference') }}</span>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-
-                                            <div class="hidden sm:block shrink-0">
-                                                {% if finding.get('status', '').upper() == 'PASS' %}
-                                                    <span class="rounded-md border border-signal-green/15 bg-signal-green/5 px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-signal-green">PASS</span>
-                                                {% elif finding.get('status', '').upper() == 'WARNING' %}
-                                                    <span class="rounded-md border border-signal-amber/15 bg-signal-amber/5 px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-signal-amber">WARNING</span>
-                                                {% else %}
-                                                    <span class="rounded-md border border-signal-red/15 bg-signal-red/5 px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-signal-red">{{ finding.get('status', 'FAIL') }}</span>
-                                                {% endif %}
-                                            </div>
-
-                                            <div class="shrink-0 text-nexus-600 transition group-open:rotate-180">⌄</div>
-                                        </summary>
-
-                                        <div class="border-t border-white/5 bg-black/10 px-5 py-4 sm:px-[calc(1.5rem+4rem)]">
-                                            <div class="grid gap-4 lg:grid-cols-2">
-                                                <div>
-                                                    <div class="text-[8px] font-bold uppercase tracking-[.18em] text-nexus-700">Details</div>
-                                                    <p class="mt-2 text-[10px] leading-5 text-nexus-400">{{ finding.get('details', 'No details provided.') }}</p>
-                                                </div>
-                                                <div>
-                                                    <div class="text-[8px] font-bold uppercase tracking-[.18em] text-nexus-700">Recommendation</div>
-                                                    <p class="mt-2 text-[10px] leading-5 text-nexus-400">{{ finding.get('recommendation', 'No recommendation provided.') }}</p>
-                                                </div>
-                                            </div>
-                                            <div class="mt-4 flex flex-wrap gap-2 font-mono text-[8px] text-nexus-600">
-                                                <span class="rounded-md border border-white/5 bg-white/[.02] px-2 py-1">SEVERITY: {{ finding.get('severity', 'N/A') }}</span>
-                                                <span class="rounded-md border border-white/5 bg-white/[.02] px-2 py-1">MODULE: {{ finding.get('module', 'N/A') }}</span>
-                                                {% if finding.get('timestamp') %}
-                                                    <span class="rounded-md border border-white/5 bg-white/[.02] px-2 py-1">TIME: {{ finding.get('timestamp') }}</span>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    </details>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    {% else %}
-                        <div class="px-5 py-16 text-center sm:px-6">
-                            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-signal-amber/15 bg-signal-amber/5">
-                                <svg class="h-6 w-6 text-signal-amber" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01"/>
-                                    <circle cx="12" cy="12" r="8"/>
-                                </svg>
-                            </div>
-                            <div class="mt-4 text-sm font-medium text-nexus-300">No Atom audit available</div>
-                            <div class="mt-1 text-xs text-nexus-600">Ejecuta <span class="font-mono text-nexus-400">Run Atom Audit</span> para generar el primer reporte.</div>
-                        </div>
-                    {% endif %}
+                    </div>
                 </section>
 
                 <!-- Event stream -->
@@ -876,7 +716,7 @@
                                 </tr>
                             </thead>
 
-                            <tbody class="divide-y divide-white/5">
+                            <tbody id="events-body" class="divide-y divide-white/5">
                                 {% if alertas %}
                                     {% for alerta in alertas %}
                                     <tr style="--row-index: {{ loop.index0 }}" class="event-row severity-row {% if alerta.nivel == 'CRITICAL' %}severity-critical{% elif alerta.nivel == 'WARNING' %}severity-warning{% else %}severity-info{% endif %} transition hover:bg-white/[.02]">
@@ -947,6 +787,9 @@
 <div id="toast-container" class="pointer-events-none fixed bottom-5 right-5 z-50 flex w-[min(360px,calc(100vw-40px))] flex-col gap-3"></div>
 
 <script>
+    let ultimoReporte = null;
+    let ultimoEstadoEventos = '';
+
     function escaparHtml(texto) {
         const div = document.createElement('div');
         div.textContent = texto ?? '';
@@ -1004,9 +847,304 @@
         });
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    function actualizarContadores(alertas) {
+        const total = alertas.length;
+        const critical = alertas.filter(a => a.nivel === 'CRITICAL').length;
+        const warning = alertas.filter(a => a.nivel === 'WARNING').length;
+        const blocked = alertas.filter(a => (a.accion || '').toLowerCase().includes('bloque')).length;
+
+        const metricTargets = document.querySelectorAll('.metric-number[data-target]');
+        const values = [total, critical, warning, blocked];
+
+        // The first four matching metrics are the command-center metrics.
+        metricTargets.forEach((el, index) => {
+            if (index < 4) el.dataset.target = values[index];
+        });
+
+        metricTargets.forEach((el, index) => {
+            if (index < 4) el.dataset.target = values[index];
+        });
+
+        const telemetry = document.querySelector('.orbital .metric-number[data-target]');
+        if (telemetry) telemetry.dataset.target = total;
+
         animarNumeros();
-    });
+    }
+
+    function severidadHtml(nivel) {
+        if (nivel === 'CRITICAL') {
+            return '<span class="inline-flex items-center gap-2 rounded-md border border-signal-red/15 bg-signal-red/5 px-2 py-1.5 text-[8px] font-bold uppercase tracking-wider text-signal-red"><span class="h-1.5 w-1.5 rounded-full bg-signal-red"></span> Critical</span>';
+        }
+
+        if (nivel === 'WARNING') {
+            return '<span class="inline-flex items-center gap-2 rounded-md border border-signal-amber/15 bg-signal-amber/5 px-2 py-1.5 text-[8px] font-bold uppercase tracking-wider text-signal-amber"><span class="h-1.5 w-1.5 rounded-full bg-signal-amber"></span> Warning</span>';
+        }
+
+        return '<span class="inline-flex items-center gap-2 rounded-md border border-signal-blue/15 bg-signal-blue/5 px-2 py-1.5 text-[8px] font-bold uppercase tracking-wider text-signal-blue"><span class="h-1.5 w-1.5 rounded-full bg-signal-blue"></span> Info</span>';
+    }
+
+    function renderAlertas(alertas) {
+        const body = document.getElementById('events-body');
+        if (!body) return;
+
+        const estado = JSON.stringify(alertas);
+        if (estado === ultimoEstadoEventos) return;
+        ultimoEstadoEventos = estado;
+
+        if (!alertas.length) {
+            body.innerHTML = `
+                <tr>
+                    <td colspan="6" class="px-5 py-20 text-center">
+                        <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-signal-green/15 bg-signal-green/5">
+                            <svg class="h-6 w-6 text-signal-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5 10 17l9-10"/>
+                            </svg>
+                        </div>
+                        <div class="mt-4 text-sm font-medium text-nexus-300">No security events in the buffer</div>
+                        <div class="mt-1 text-xs text-nexus-600">NexusSIEM continúa monitorizando el nodo.</div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        body.innerHTML = alertas.map((alerta, index) => {
+            const severityClass = alerta.nivel === 'CRITICAL'
+                ? 'severity-critical'
+                : (alerta.nivel === 'WARNING' ? 'severity-warning' : 'severity-info');
+
+            return `
+                <tr style="--row-index: ${index}" class="event-row severity-row ${severityClass} transition hover:bg-white/[.02]">
+                    <td class="whitespace-nowrap px-5 py-4 align-top">
+                        <div class="font-mono text-[9px] text-nexus-400">${escaparHtml(alerta.tiempo)}</div>
+                    </td>
+                    <td class="px-5 py-4 align-top">
+                        <div class="text-[11px] font-medium text-nexus-200">${escaparHtml(alerta.fuente)}</div>
+                    </td>
+                    <td class="px-5 py-4 align-top">${severidadHtml(alerta.nivel)}</td>
+                    <td class="max-w-[520px] px-5 py-4 align-top">
+                        <div class="text-[11px] leading-5 text-nexus-300">${escaparHtml(alerta.mensaje)}</div>
+                    </td>
+                    <td class="px-5 py-4 align-top">
+                        <div class="max-w-[220px] font-mono text-[9px] leading-5 text-nexus-500">${escaparHtml(alerta.ubicacion || 'N/A')}</div>
+                    </td>
+                    <td class="px-5 py-4 align-top">
+                        <div class="font-mono text-[9px] leading-5 text-nexus-400">${escaparHtml(alerta.accion || 'Ninguna')}</div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function renderAudit(report) {
+        const container = document.getElementById('audit-content');
+        const state = document.getElementById('audit-live-state');
+        const filename = document.getElementById('audit-file-name');
+
+        if (!container || !state || !filename) return;
+
+        if (!report) {
+            state.className = 'inline-flex items-center gap-1.5 rounded-full border border-signal-amber/15 bg-signal-amber/5 px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-signal-amber';
+            state.textContent = 'Waiting';
+            filename.textContent = '';
+
+            container.innerHTML = `
+                <div class="flex min-h-[220px] items-center justify-center px-5 py-16 text-center">
+                    <div>
+                        <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-signal-amber/15 bg-signal-amber/5">
+                            <svg class="h-6 w-6 text-signal-amber" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01"/>
+                                <circle cx="12" cy="12" r="8"/>
+                            </svg>
+                        </div>
+                        <div class="mt-4 text-sm font-medium text-nexus-300">No Atom audit available</div>
+                        <div class="mt-1 text-xs text-nexus-600">Ejecuta <span class="font-mono text-nexus-400">Run Atom Audit</span> para generar el primer reporte.</div>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        state.className = 'inline-flex items-center gap-1.5 rounded-full border border-signal-green/15 bg-signal-green/5 px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-signal-green';
+        state.innerHTML = '<span class="h-1.5 w-1.5 rounded-full bg-signal-green"></span> Live report';
+        filename.textContent = report.filename || '';
+
+        const summary = report.summary || {};
+        const status = summary.status || {};
+        const score = Number(summary.score || 0);
+        const rating = summary.rating || 'UNKNOWN';
+        const total = Number(summary.total ?? (report.findings || []).length);
+
+        let tone = 'green';
+        if (score < 60) tone = 'red';
+        else if (score < 80) tone = 'amber';
+
+        const toneClass = tone === 'green' ? 'signal-green' : (tone === 'amber' ? 'signal-amber' : 'signal-red');
+
+        const findingsHtml = (report.findings || []).map((finding, index) => {
+            const findingStatus = String(finding.status || 'FAIL').toUpperCase();
+            let badge = 'border-signal-red/15 bg-signal-red/5 text-signal-red';
+
+            if (findingStatus === 'PASS') badge = 'border-signal-green/15 bg-signal-green/5 text-signal-green';
+            else if (findingStatus === 'WARNING') badge = 'border-signal-amber/15 bg-signal-amber/5 text-signal-amber';
+
+            return `
+                <details class="group bg-white/[.006] transition hover:bg-white/[.012]">
+                    <summary class="flex cursor-pointer list-none items-center gap-4 px-5 py-4 sm:px-6">
+                        <div class="w-16 shrink-0 font-mono text-[9px] text-nexus-700">${String(index + 1).padStart(2, '0')}</div>
+                        <div class="min-w-0 flex-1">
+                            <div class="truncate text-[11px] font-medium text-nexus-200">${escaparHtml(finding.title || 'Untitled finding')}</div>
+                            <div class="mt-1 flex flex-wrap items-center gap-2 text-[9px] text-nexus-600">
+                                <span>${escaparHtml(finding.category || 'Uncategorized')}</span>
+                                ${finding.reference ? '<span class="h-1 w-1 rounded-full bg-nexus-700"></span><span class="font-mono">' + escaparHtml(finding.reference) + '</span>' : ''}
+                            </div>
+                        </div>
+                        <div class="hidden sm:block shrink-0">
+                            <span class="rounded-md border px-2 py-1 text-[8px] font-bold uppercase tracking-wider ${badge}">${escaparHtml(findingStatus)}</span>
+                        </div>
+                        <div class="shrink-0 text-nexus-600 transition group-open:rotate-180">⌄</div>
+                    </summary>
+
+                    <div class="border-t border-white/5 bg-black/10 px-5 py-4 sm:px-[calc(1.5rem+4rem)]">
+                        <div class="grid gap-4 lg:grid-cols-2">
+                            <div>
+                                <div class="text-[8px] font-bold uppercase tracking-[.18em] text-nexus-700">Details</div>
+                                <p class="mt-2 text-[10px] leading-5 text-nexus-400">${escaparHtml(finding.details || 'No details provided.')}</p>
+                            </div>
+                            <div>
+                                <div class="text-[8px] font-bold uppercase tracking-[.18em] text-nexus-700">Recommendation</div>
+                                <p class="mt-2 text-[10px] leading-5 text-nexus-400">${escaparHtml(finding.recommendation || 'No recommendation provided.')}</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex flex-wrap gap-2 font-mono text-[8px] text-nexus-600">
+                            <span class="rounded-md border border-white/5 bg-white/[.02] px-2 py-1">SEVERITY: ${escaparHtml(finding.severity || 'N/A')}</span>
+                            <span class="rounded-md border border-white/5 bg-white/[.02] px-2 py-1">MODULE: ${escaparHtml(finding.module || 'N/A')}</span>
+                            ${finding.timestamp ? '<span class="rounded-md border border-white/5 bg-white/[.02] px-2 py-1">TIME: ' + escaparHtml(finding.timestamp) + '</span>' : ''}
+                        </div>
+                    </div>
+                </details>
+            `;
+        }).join('');
+
+        container.innerHTML = `
+            <div class="grid gap-5 border-b border-white/5 p-5 sm:p-6 lg:grid-cols-[280px_1fr]">
+                <div class="rounded-xl border border-white/5 bg-black/10 p-5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[9px] font-bold uppercase tracking-[.2em] text-nexus-600">Security Score</span>
+                        <span class="font-mono text-[9px] text-nexus-600">ATOM</span>
+                    </div>
+                    <div class="mt-5 flex items-end gap-2">
+                        <span class="text-5xl font-semibold tracking-tight text-white">${score}</span>
+                        <span class="pb-2 font-mono text-xs text-nexus-600">/100</span>
+                    </div>
+                    <div class="mt-5 h-2 overflow-hidden rounded-full bg-nexus-800">
+                        <div class="h-full rounded-full bg-${toneClass}" style="width: ${Math.max(0, Math.min(score, 100))}%"></div>
+                    </div>
+                    <div class="mt-4 flex items-center justify-between">
+                        <span class="text-[9px] uppercase tracking-[.16em] text-nexus-600">Rating</span>
+                        <span class="font-mono text-[10px] font-semibold text-${toneClass}">${escaparHtml(rating)}</span>
+                    </div>
+                    <div class="mt-4 border-t border-white/5 pt-4 text-[9px] text-nexus-600">
+                        Generated:
+                        <span class="font-mono text-nexus-400">${escaparHtml(report.generated || 'N/A')}</span>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="mb-3">
+                        <div class="text-[9px] font-bold uppercase tracking-[.2em] text-nexus-600">Assessment Summary</div>
+                        <div class="mt-1 text-xs text-nexus-400">${total} findings returned by ${escaparHtml(summary.module || 'Atom')}</div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        <div class="rounded-xl border border-signal-green/10 bg-signal-green/[.025] p-4">
+                            <div class="text-[9px] uppercase tracking-[.16em] text-nexus-600">Pass</div>
+                            <div class="mt-3 text-2xl font-semibold text-white">${Number(status.PASS || 0)}</div>
+                        </div>
+                        <div class="rounded-xl border border-signal-amber/10 bg-signal-amber/[.025] p-4">
+                            <div class="text-[9px] uppercase tracking-[.16em] text-nexus-600">Warning</div>
+                            <div class="mt-3 text-2xl font-semibold text-white">${Number(status.WARNING || 0)}</div>
+                        </div>
+                        <div class="rounded-xl border border-signal-red/10 bg-signal-red/[.025] p-4">
+                            <div class="text-[9px] uppercase tracking-[.16em] text-nexus-600">Fail</div>
+                            <div class="mt-3 text-2xl font-semibold text-white">${Number(status.FAIL || 0)}</div>
+                        </div>
+                        <div class="rounded-xl border border-white/5 bg-white/[.018] p-4">
+                            <div class="text-[9px] uppercase tracking-[.16em] text-nexus-600">Findings</div>
+                            <div class="mt-3 text-2xl font-semibold text-white">${total}</div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 rounded-xl border border-white/5 bg-white/[.012] p-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[9px] font-bold uppercase tracking-[.18em] text-nexus-600">Assessment posture</span>
+                            <span class="font-mono text-[9px] text-${toneClass}">${escaparHtml(rating)}</span>
+                        </div>
+                        <div class="mt-3 text-[11px] leading-5 text-nexus-400">
+                            Atom evaluó la configuración del nodo y generó un reporte estructurado para revisión del equipo Blue Team.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="px-5 py-4 sm:px-6">
+                    <div class="text-[9px] font-bold uppercase tracking-[.2em] text-nexus-600">Findings</div>
+                </div>
+                <div class="divide-y divide-white/5">
+                    ${findingsHtml || '<div class="px-5 py-10 text-center text-xs text-nexus-600">No findings returned.</div>'}
+                </div>
+            </div>
+        `;
+
+        const scoreNumber = container.querySelector('.text-5xl');
+        if (scoreNumber) {
+            scoreNumber.classList.add('metric-number');
+            scoreNumber.dataset.target = score;
+            scoreNumber.textContent = '0';
+            animarNumeros();
+        }
+    }
+
+    async function actualizarEstado() {
+        try {
+            const response = await fetch('/api/state', {
+                method: 'GET',
+                credentials: 'same-origin',
+                cache: 'no-store'
+            });
+
+            if (response.status === 401) {
+                mostrarToast('La sesión administrativa ya no es válida.', 'error');
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            actualizarContadores(data.alerts || []);
+            renderAlertas(data.alerts || []);
+
+            const reporte = data.audit || null;
+            const identificadorReporte = reporte
+                ? `${reporte.filename}|${reporte.generated || ''}`
+                : 'none';
+
+            if (identificadorReporte !== ultimoReporte) {
+                ultimoReporte = identificadorReporte;
+                renderAudit(reporte);
+            }
+        } catch (error) {
+            const state = document.getElementById('audit-live-state');
+            if (state) {
+                state.className = 'inline-flex items-center gap-1.5 rounded-full border border-signal-red/15 bg-signal-red/5 px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-signal-red';
+                state.textContent = 'Offline';
+            }
+        }
+    }
 
     async function ejecutarAccion(herramienta) {
         const botones = document.querySelectorAll('.action-btn');
@@ -1026,13 +1164,20 @@
             }
 
             mostrarToast(data.message || 'La acción fue enviada correctamente.');
-            setTimeout(() => location.reload(), 900);
+
+            // Consultar inmediatamente y después dejar el polling normal.
+            setTimeout(actualizarEstado, 700);
         } catch (error) {
             mostrarToast(error.message || 'No se pudo ejecutar la acción.', 'error');
         } finally {
-            botones.forEach(b => b.disabled = false);
+            setTimeout(() => botones.forEach(b => b.disabled = false), 500);
         }
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        actualizarEstado();
+        setInterval(actualizarEstado, 3000);
+    });
 </script>
 </body>
 </html>
