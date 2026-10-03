@@ -239,6 +239,15 @@
 
             <div class="relative mx-auto max-w-[1650px] space-y-6 px-5 py-6 sm:px-7 lg:px-9 lg:py-8">
 
+                {% set ns = namespace(total=0, critical=0, warning=0, info=0, blocked=0) %}
+                {% for alerta in alertas %}
+                    {% set ns.total = ns.total + 1 %}
+                    {% if alerta.nivel == 'CRITICAL' %}{% set ns.critical = ns.critical + 1 %}{% endif %}
+                    {% if alerta.nivel == 'WARNING' %}{% set ns.warning = ns.warning + 1 %}{% endif %}
+                    {% if alerta.nivel == 'INFO' %}{% set ns.info = ns.info + 1 %}{% endif %}
+                    {% if alerta.accion and 'bloque' in alerta.accion|lower %}{% set ns.blocked = ns.blocked + 1 %}{% endif %}
+                {% endfor %}
+
                 <!-- Command overview -->
                 <section class="panel overflow-hidden rounded-2xl">
                     <div class="grid xl:grid-cols-[1fr_auto]">
@@ -300,15 +309,6 @@
                         </div>
                     </div>
                 </section>
-
-                {% set ns = namespace(total=0, critical=0, warning=0, info=0, blocked=0) %}
-                {% for alerta in alertas %}
-                    {% set ns.total = ns.total + 1 %}
-                    {% if alerta.nivel == 'CRITICAL' %}{% set ns.critical = ns.critical + 1 %}{% endif %}
-                    {% if alerta.nivel == 'WARNING' %}{% set ns.warning = ns.warning + 1 %}{% endif %}
-                    {% if alerta.nivel == 'INFO' %}{% set ns.info = ns.info + 1 %}{% endif %}
-                    {% if alerta.accion and 'bloque' in alerta.accion|lower %}{% set ns.blocked = ns.blocked + 1 %}{% endif %}
-                {% endfor %}
 
                 <!-- Metrics -->
                 <section class="grid grid-cols-2 gap-4 xl:grid-cols-4">
