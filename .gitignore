@@ -1,4 +1,12 @@
+# Python environments
 venv/
+.venv/
+
+# Python cache and test artifacts
 __pycache__/
+.pytest_cache/
+*.py[cod]
+
+# Runtime logs and local secrets
 *.log
 .env

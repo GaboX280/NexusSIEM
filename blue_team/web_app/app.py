@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from flask import Flask, request, jsonify, render_template, Response
+from dotenv import load_dotenv
 import hmac
 import ipaddress
 import logging
@@ -10,20 +11,26 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-# Inicialización de la aplicación Flask
-app = Flask(__name__)
+APP_DIR = Path(__file__).resolve().parent
+BASE_DIR = str(APP_DIR.parent)
+PROJECT_ROOT = APP_DIR.parent.parent
 
-# Configuración sensible mediante variables de entorno.
-# NO guardar credenciales ni webhooks directamente en el repositorio.
+# La configuración del proceso (por ejemplo, systemd) tiene prioridad sobre .env.
+# El archivo .env es local y nunca debe subirse al repositorio.
+load_dotenv(PROJECT_ROOT / ".env", override=False)
+
+# Por seguridad, la aplicación asume producción si el entorno no está definido.
+NEXUS_ENV = os.getenv("NEXUS_ENV", "production").strip().lower()
+DEMO_MODE = NEXUS_ENV in {"development", "dev", "demo", "test"}
 WEBHOOK_URL = os.getenv("NEXUS_TEAMS_WEBHOOK", "")
 ADMIN_USER = os.getenv("NEXUS_ADMIN_USER", "")
 ADMIN_PASSWORD = os.getenv("NEXUS_ADMIN_PASSWORD", "")
+HOST = os.getenv("NEXUS_HOST", "127.0.0.1" if DEMO_MODE else "0.0.0.0")
+PORT = int(os.getenv("NEXUS_PORT", "5000"))
 
-LOG_FILE = os.path.join(os.path.dirname(__file__), "..", "central_security_alerts.log")
+app = Flask(__name__)
+LOG_FILE = str(APP_DIR.parent / "central_security_alerts.log")
 alertas_recientes = []
-
-# Ruta base para encontrar los scripts en la carpeta blue_team/
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 ATOM_REPORTS_DIR = Path.home() / "Atom-Hardening" / "reports"
 
 logging.basicConfig(
@@ -79,7 +86,49 @@ def clasificacion_atom(score):
 
 
 def cargar_ultimo_reporte_atom():
-    """Carga el reporte JSON más reciente generado por Atom."""
+    """Carga el reporte más reciente o uno sintético en modo de demostración."""
+    if DEMO_MODE:
+        return {
+            "filename": "reporte_atom_demo.json",
+            "generated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "summary": {
+                "score": 82,
+                "status": {"PASS": 8, "WARNING": 2, "FAIL": 1},
+                "total": 11,
+                "module": "Atom Demo",
+                "rating": clasificacion_atom(82),
+            },
+            "findings": [
+                {
+                    "title": "SSH hardening",
+                    "category": "Access Control",
+                    "status": "PASS",
+                    "severity": "LOW",
+                    "module": "SSH",
+                    "details": "Hallazgo sintético de demostración; no se inspeccionó el sistema.",
+                    "recommendation": "En una auditoría real, verificar la configuración SSH efectiva.",
+                },
+                {
+                    "title": "Firewall policy review",
+                    "category": "Network Security",
+                    "status": "WARNING",
+                    "severity": "MEDIUM",
+                    "module": "Firewall",
+                    "details": "Ejemplo ilustrativo para mostrar el formato de hallazgos.",
+                    "recommendation": "Revisar las reglas desde un entorno de laboratorio autorizado.",
+                },
+                {
+                    "title": "Privileged service exposure",
+                    "category": "System Hardening",
+                    "status": "FAIL",
+                    "severity": "HIGH",
+                    "module": "Services",
+                    "details": "Hallazgo ficticio incluido únicamente para la interfaz de demostración.",
+                    "recommendation": "Validar servicios expuestos durante una auditoría real.",
+                },
+            ],
+        }
+
     if not ATOM_REPORTS_DIR.is_dir():
         return None
 
@@ -126,10 +175,12 @@ def ip_valida(ip):
 
 
 def bloquear_ip(ip):
-    """Bloquea una IP a nivel de firewall sin usar shell=True."""
+    """Bloquea una IP a nivel de firewall; en modo demo nunca modifica reglas."""
     direccion = ip_valida(ip)
     if direccion is None:
         return "IP inválida; no se aplicó bloqueo."
+    if DEMO_MODE:
+        return f"SIMULACIÓN: {direccion} no se bloqueó (modo local)."
 
     try:
         check = subprocess.run(
@@ -160,9 +211,11 @@ def bloquear_ip(ip):
 
 
 def obtener_geolocalizacion(ip):
-    """Consulta la ubicación geográfica de la IP usando una API pública y ligera."""
+    """Consulta geolocalización solo en producción; demo evita llamadas externas."""
     direccion = ip_valida(ip)
 
+    if DEMO_MODE:
+        return "Local / Simulado"
     if direccion is None or direccion.is_loopback or direccion.is_private:
         return "Local / Red Interna"
 
@@ -184,7 +237,10 @@ def obtener_geolocalizacion(ip):
 
 
 def enviar_webhook_teams(fuente, nivel, mensaje, accion, ip_atacante=None):
-    """Envía una Adaptive Card a Power Automate/Teams si el webhook está configurado."""
+    """Envía alertas a Teams solo fuera del modo de demostración."""
+    if DEMO_MODE:
+        logging.info("Modo demo: alerta no enviada a Teams.")
+        return
     if not WEBHOOK_URL:
         logging.warning("NEXUS_TEAMS_WEBHOOK no está configurado; alerta no enviada a Teams.")
         return
@@ -308,13 +364,15 @@ def recibir_alerta():
 
 @app.route("/api/state", methods=["GET"])
 def estado_dashboard():
-    """Entrega el estado vivo del dashboard al operador autenticado."""
+    """Entrega el estado del dashboard al operador autenticado."""
     auth_error = requiere_autenticacion()
     if auth_error:
         return auth_error
 
     return jsonify({
         "status": "ok",
+        "environment": NEXUS_ENV,
+        "demo_mode": DEMO_MODE,
         "alerts": alertas_recientes,
         "audit": cargar_ultimo_reporte_atom(),
     }), 200
@@ -342,10 +400,36 @@ def ultimo_reporte_atom():
 
 @app.route("/api/run/<herramienta>", methods=["POST"])
 def ejecutar_herramienta(herramienta):
-    """Dispara herramientas administrativas del Blue Team."""
+    """Dispara herramientas reales en producción o respuestas sintéticas en demo."""
     auth_error = requiere_autenticacion()
     if auth_error:
         return auth_error
+
+    if DEMO_MODE:
+        mensajes_demo = {
+            "firewall": "SIMULACIÓN: se mostraría el resultado de Firewall Hardening; no se ejecutó sudo ni se modificó el firewall.",
+            "audit": "SIMULACIÓN: auditoría Atom de demostración; no se ejecutó ningún escáner del sistema.",
+            "sniffer": "SIMULACIÓN: se mostraría la activación del IDS; no se capturó tráfico de red.",
+        }
+        if herramienta not in mensajes_demo:
+            return jsonify({"error": "Herramienta no reconocida"}), 400
+
+        mensaje = mensajes_demo[herramienta]
+        alertas_recientes.insert(0, {
+            "tiempo": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "fuente": "Web Dashboard / Demo",
+            "nivel": "INFO",
+            "mensaje": mensaje,
+            "accion": "Simulado; no se ejecutaron comandos privilegiados",
+            "ubicacion": "Local / Simulado",
+        })
+        del alertas_recientes[50:]
+        logging.info("Modo demo: %s", mensaje)
+        return jsonify({
+            "status": "ok",
+            "demo_mode": True,
+            "message": mensaje,
+        }), 200
 
     try:
         if herramienta == "firewall":
@@ -395,9 +479,12 @@ def dashboard():
         "index.html",
         alertas=alertas_recientes,
         reporte_atom=reporte_atom,
+        demo_mode=DEMO_MODE,
+        environment_label="LOCAL / DEMO" if DEMO_MODE else "AZURE / LINUX / PRODUCTION",
+        node_label="Local / Demo" if DEMO_MODE else "BlueTeam / Azure",
     )
 
 
 if __name__ == "__main__":
-    # Debug desactivado: esta VM está expuesta a la red.
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    # Desarrollo queda limitado a localhost; producción conserva el bind de Azure.
+    app.run(host=HOST, port=PORT, debug=False)
