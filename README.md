@@ -1,115 +1,100 @@
-# 🛡️ Blue Team SIEM & Automated Defense Framework
+# 🛡️ NexusSIEM — Blue Team SIEM & Automated Defense Framework
 
-> **University Project:** Bachelor's Degree in Cybersecurity Engineering  
+> **University project:** Bachelor's Degree in Cybersecurity Engineering  
 > **Institution:** Universidad Fidélitas, Costa Rica  
-> **Author:** Gabriel Villalobos Alpízar
+> **Purpose:** Academic and authorized defensive-security labs
 
----
+NexusSIEM is a lightweight Flask-based security dashboard for collecting alerts, displaying Atom audit results, and integrating defensive tooling such as Scapy, UFW/iptables, and Microsoft Teams.
 
-## 📌 Project Overview
-
-This project is an integrated **active defense and security monitoring (Blue Team)** solution designed for Linux-based virtual environments (CachyOS / Arch Linux) deployed in Microsoft Azure.
-
-In modern cybersecurity, responding to incidents quickly is just as critical as prevention. This framework automates intrusion detection (IDS), hardens the operating system's attack surface, centralizes events in a lightweight **Flask-based SIEM**, and sends real-time alerts to corporate communication channels (Microsoft Teams) using Adaptive Cards. It can also automatically apply firewall blocks through `iptables` / `UFW` without human intervention.
-
----
-
-## 🏗️ Architecture and Repository Structure
-
-The project is organized into modules to separate defensive capabilities, auditing tools, and technical reports:
+## Repository layout
 
 ```text
 NexusSIEM/
-│
-├── blue_team/                     # Main defensive module
-│   ├── web_app/                   # SIEM application and dashboard
-│   │   ├── static/
-│   │   │   └── style.css          # Dark-mode UI/UX styling
-│   │   ├── templates/
-│   │   │   └── index.html         # Interactive web interface with auto-refresh
-│   │   └── app.py                 # Flask server, alert API, and Teams webhook
-│   ├── atom.py                    # Custom operating-system auditing framework
-│   ├── sniffer_defense.py         # Scapy-based IDS with active iptables response
-│   └── firewall_hardening.sh      # UFW hardening and traffic-control script
-│
-├── red_team/                      # Simulation and offensive-testing module
-│   └── (Testing and automated-scanning tools)
-│
-├── docs/                          # Academic documentation and technical reports
-│   └── report.md                 # Detailed project report
-│
-├── .gitignore                     # Excludes virtual environments, logs, and cache
-├── requirements.txt               # Python project dependencies
-└── README.md                      # Main repository documentation
+├── blue_team/
+│   ├── web_app/
+│   │   ├── app.py
+│   │   ├── .env.example
+│   │   ├── templates/index.html
+│   │   └── static/style.css
+│   ├── atom_launcher.py
+│   ├── sniffer_defense.py
+│   └── firewall_hardening.sh
+├── requirements.txt
+├── .gitignore
+└── README.md
 ```
 
----
+## Run locally (safe demo mode)
 
-## ⚙️ Technology Stack
+The local mode lets teammates clone the repository and test the dashboard without Azure credentials, Atom installed, sudo permissions, or access to a real firewall. Audit data and defensive actions are simulated; no firewall rules are changed, no packet capture is started, and Teams/geolocation integrations are not called.
 
-- **Core and Backend:** Python 3 (Flask, Scapy, Requests, Subprocess)
-- **Security and Networking:** UFW, `iptables`, Bash scripting, network packet analysis
-- **Alerts and Automation:** Microsoft Teams (Power Automate webhooks and Adaptive Cards)
-- **Environment:** Linux (CachyOS / Arch Linux) and Microsoft Azure virtual machines
-
----
-
-## 🚀 Installation and Deployment
-
-Follow these steps to clone, configure, and run the framework in a local environment or an Azure virtual machine.
-
-### 1. Clone the repository
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/GaboX280/NexusSIEM.git
 cd NexusSIEM
+
+python -m venv .venv
 ```
 
-### 2. Create a Python virtual environment
+Activate the virtual environment:
 
 ```bash
-python -m venv venv
-# Activate the environment
-source venv/bin/activate.fish   # or 'source venv/bin/activate' in bash
+# Linux/macOS, Bash or Zsh
+source .venv/bin/activate
+
+# Fish shell instead:
+# source .venv/bin/activate.fish
 ```
 
-### 3. Install dependencies
+Install dependencies and create local configuration:
 
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
+cp blue_team/web_app/.env.example .env
 ```
 
-### 4. Configure the firewall and hardening
+The sample configuration uses the local-only demo credentials `localadmin` / `local-dev-change-me`. You can change them in `.env`. The `.env` file is ignored by Git and must never be committed.
 
-Make the hardening script executable and run it:
+### 2. Start the dashboard
+
+From the repository root:
 
 ```bash
-cd blue_team
-chmod +x firewall_hardening.sh
-sudo ./firewall_hardening.sh
+python blue_team/web_app/app.py
 ```
 
-### 5. Start the SIEM dashboard and web server
+Open **http://127.0.0.1:5000**. The browser will request the username and password configured in `.env`.
 
-Navigate to the web application directory and start the Flask server:
+In demo mode, the dashboard displays a synthetic Atom report and the action buttons return clearly labelled simulated results. The application binds to localhost by default, so it is not exposed to the local network.
+
+### 3. Optional tests
 
 ```bash
-cd web_app
-python app.py
+python -m unittest discover -s tests -v
 ```
 
-The dashboard will be available at `http://<AZURE_IP_OR_LOCALHOST>:5000`.
+## Production / Azure configuration
 
----
+Do not use the demo credentials in Azure. Set these variables through the deployment's protected environment (for example, the systemd service environment or a root-readable environment file):
 
-## 📊 Key Features
+- `NEXUS_ENV=production`
+- `NEXUS_ADMIN_USER` — a unique administrative username
+- `NEXUS_ADMIN_PASSWORD` — a strong, unique password
+- `NEXUS_TEAMS_WEBHOOK` — optional Teams webhook URL
 
-1. **Automated incident response (basic SOAR):** When a critical alert includes a source IP address, the system can interact with `iptables` to apply an immediate `DROP` rule.
-2. **Real-time dashboard:** A dark-themed web interface with status cards and auto-refresh for continuous SOC monitoring.
-3. **Teams integration:** Automatically sends structured alerts using Adaptive Cards, improving team visibility and traceability.
+The application defaults to production mode when `NEXUS_ENV` is not set. In production, administrative routes run the configured tools and may affect the host. Review the scripts and permissions before enabling them. Do not expose the Flask development server directly to the public Internet; use a properly configured production WSGI server, HTTPS reverse proxy, network restrictions, and least-privilege service permissions.
 
----
+**Never run the firewall-hardening script just to test the local dashboard.** It is an optional, potentially disruptive operation and should only be executed in a planned, authorized lab or deployment.
 
-## 📄 License
+## Main capabilities
 
-This project is developed for academic and research purposes as part of the Cybersecurity Engineering program at Universidad Fidélitas.
+- Flask dashboard and recent security-event buffer.
+- Protected dashboard and administrative API using HTTP Basic Authentication.
+- Atom report display (real reports in production; synthetic report in demo mode).
+- Optional Microsoft Teams Adaptive Card alerts.
+- Defensive integrations for firewall hardening, packet analysis, and audit execution.
+
+## License
+
+Developed for academic and research purposes as part of the Cybersecurity Engineering program at Universidad Fidélitas.
