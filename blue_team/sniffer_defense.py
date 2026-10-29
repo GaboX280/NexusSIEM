@@ -1,113 +1,131 @@
 #!/usr/bin/env python3
-from scapy.all import sniff, IP, TCP, ARP
-import subprocess
-import logging
+"""Network IDS with conservative, validated iptables response."""
 from collections import defaultdict
+import ipaddress
+import logging
+import subprocess
 import time
-# Configuración de logging
+
+from scapy.all import ARP, IP, TCP, sniff
+
 logging.basicConfig(
     filename="intrusion_defense.log",
     level=logging.WARNING,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
-# Estructuras de control para análisis de comportamiento
-puertos_escaneados = defaultdict(set)      # Para escaneos de puertos (Nmap -sS)
-conteo_syn_flood = defaultdict(list)       # Para control de tasas de SYN packets
-tabla_arp_conocida = {}                    # Para detección de ARP Spoofing
-# Umbrales de alerta y bloqueo
-UMBRAL_PUERTOS_DISTINTOS = 12  # Si toca más de 12 puertos distintos -> Escaneo Nmap
-UMBRAL_SYN_RATE = 30           # Más de 30 paquetes SYN en el intervalo de tiempo
-VENTANA_TIEMPO = 5.0           # Segundos para la ventana de tasa SYN
-## FUNCIONES DEL PROGRAMA ##
-# Sistema de bloqueo automático de IPs maliciosas usando iptables
-def bloquear_ip(ip_atacante, motivo):
-    """Bloquea automáticamente la IP maliciosa usando iptables de Linux."""
+
+puertos_escaneados = defaultdict(set)
+conteo_syn_flood = defaultdict(list)
+tabla_arp_conocida = {}
+UMBRAL_PUERTOS_DISTINTOS = 12
+UMBRAL_SYN_RATE = 30
+VENTANA_TIEMPO = 5.0
+
+
+def ip_bloqueable(ip_atacante):
+    """Parse and reject special-purpose addresses before firewall changes."""
     try:
-        # Verificar si la regla ya existe para evitar duplicados
-        verificacion = subprocess.run(
-            f"sudo iptables -C INPUT -s {ip_atacante} -j DROP", 
-            shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-        if verificacion.returncode != 0:
-            # Ejecutar bloqueo en iptables
-            subprocess.run(f"sudo iptables -A INPUT -s {ip_atacante} -j DROP", shell=True, check=True)
-            mensaje = f"[BLOQUEO AUTOMÁTICO] IP bloqueada por '{motivo}': {ip_atacante}"
-            print(f"\033[91m\n[!] {mensaje}\033[0m")
-            logging.critical(mensaje)
-        else:
-            print(f"[*] La IP {ip_atacante} ya se encontraba previamente bloqueada.")
-    except Exception as e:
-        print(f"[-] Error crítico al aplicar iptables para {ip_atacante}: {e}")
-# Analizador de trafico TCP para detectar escaneo de puertos y SYN Flood
+        ip = ipaddress.ip_address(ip_atacante)
+    except (ValueError, TypeError):
+        return None
+    if ip.is_loopback or ip.is_unspecified or ip.is_multicast or ip.is_link_local or ip.is_reserved:
+        return None
+    return ip
+
+
+def bloquear_ip(ip_atacante, motivo):
+    """Add an iptables DROP rule without invoking a shell."""
+    ip = ip_bloqueable(ip_atacante)
+    if ip is None:
+        logging.warning("Bloqueo rechazado para IP inválida/especial: %r (%s)", ip_atacante, motivo)
+        return False
+
+    base = ["iptables", "-C", "INPUT", "-s", str(ip), "-j", "DROP"]
+    add = ["iptables", "-A", "INPUT", "-s", str(ip), "-j", "DROP"]
+    try:
+        check = subprocess.run(base, capture_output=True, text=True, timeout=5, check=False)
+        if check.returncode == 0:
+            logging.info("La IP %s ya estaba bloqueada.", ip)
+            return True
+        result = subprocess.run(add, capture_output=True, text=True, timeout=5, check=False)
+        if result.returncode != 0:
+            logging.error("iptables no pudo bloquear %s: %s", ip, result.stderr.strip())
+            return False
+        mensaje = "[BLOQUEO AUTOMÁTICO] IP bloqueada por '%s': %s" % (motivo, ip)
+        print("\033[91m\n[!] %s\033[0m" % mensaje)
+        logging.critical(mensaje)
+        return True
+    except (OSError, subprocess.TimeoutExpired):
+        logging.exception("Error ejecutando iptables para %s.", ip)
+        return False
+
+
 def analizar_trafico_tcp(paquete):
-    """Analiza paquetes IP/TCP en busca de patrones ofensivos."""
-    if paquete.haslayer(IP) and paquete.haslayer(TCP):
-        ip_origen = paquete[IP].src
-        puerto_destino = paquete[TCP].dport
-        flags = paquete[TCP].flags
-        tiempo_actual = time.time()
+    """Detect SYN scans and high SYN rates in a rolling time window."""
+    if not (paquete.haslayer(IP) and paquete.haslayer(TCP)):
+        return
+    ip_origen = paquete[IP].src
+    puerto_destino = paquete[TCP].dport
+    flags = paquete[TCP].flags
+    tiempo_actual = time.monotonic()
 
-        # Detección 1: Escaneo de puertos (SYN Scan estilo Nmap -sS)
-        if flags == 'S':  # Paquete SYN puro
-            puertos_escaneados[ip_origen].add(puerto_destino)
-            total_puertos = len(puertos_escaneados[ip_origen])
+    if flags == "S":
+        puertos_escaneados[ip_origen].add(puerto_destino)
+        total_puertos = len(puertos_escaneados[ip_origen])
+        if total_puertos > UMBRAL_PUERTOS_DISTINTOS:
+            alerta = "Escaneo de puertos detectado. IP origen: %s afectó %s puertos." % (ip_origen, total_puertos)
+            logging.warning(alerta)
+            bloquear_ip(ip_origen, "Escaneo de puertos")
+            puertos_escaneados[ip_origen].clear()
 
-            if total_puertos > UMBRAL_PUERTOS_DISTINTOS:
-                alerta = f"Escaneo de puertos detectado (Nmap). IP origen: {ip_origen} afectó {total_puertos} puertos."
-                logging.warning(alerta)
-                bloquear_ip(ip_origen, "Escaneo de Puertos / Nmap")
-                # Limpiamos el registro de esa IP para evitar bucles constantes
-                puertos_escaneados[ip_origen].clear()
+        conteo_syn_flood[ip_origen] = [
+            t for t in conteo_syn_flood[ip_origen] if tiempo_actual - t < VENTANA_TIEMPO
+        ]
+        conteo_syn_flood[ip_origen].append(tiempo_actual)
+        if len(conteo_syn_flood[ip_origen]) > UMBRAL_SYN_RATE:
+            logging.error("Posible SYN flood detectado desde %s.", ip_origen)
+            bloquear_ip(ip_origen, "Posible SYN flood")
+            conteo_syn_flood[ip_origen].clear()
 
-            # Detección 2: Protección contra SYN Flood (Denegación de servicio)
-            # Limpiamos registros fuera de la ventana de tiempo
-            conteo_syn_flood[ip_origen] = [t for t in conteo_syn_flood[ip_origen] if tiempo_actual - t < VENTANA_TIEMPO]
-            conteo_syn_flood[ip_origen].append(tiempo_actual)
 
-            if len(conteo_syn_flood[ip_origen]) > UMBRAL_SYN_RATE:
-                alerta = f"Ataque DoS (SYN Flood) detectado desde la IP: {ip_origen}"
-                logging.error(alerta)
-                bloquear_ip(ip_origen, "SYN Flood Attack")
-                conteo_syn_flood[ip_origen].clear()
-# Analizador de trafico ARP para detectar suplantación de identidad (ARP Spoofing)
 def analizar_trafico_arp(paquete):
-    """Detecta posibles ataques de ARP Spoofing en la red local."""
-    if paquete.haslayer(ARP):
-        # ARP Opcode 2 corresponde a una respuesta ARP (ARP Reply)
-        if paquete[ARP].op == 2:
-            ip_real = paquete[ARP].psrc
-            mac_recibida = paquete[ARP].hwsrc
+    """Log a possible ARP spoofing event when a known mapping changes."""
+    if not paquete.haslayer(ARP) or paquete[ARP].op != 2:
+        return
+    ip_real = paquete[ARP].psrc
+    mac_recibida = paquete[ARP].hwsrc
+    if ip_real in tabla_arp_conocida:
+        mac_anterior = tabla_arp_conocida[ip_real]
+        if mac_anterior != mac_recibida:
+            alerta = "Posible ARP spoofing: %s cambió de %s a %s" % (ip_real, mac_anterior, mac_recibida)
+            print("\033[93m\n[!] %s\033[0m" % alerta)
+            logging.critical(alerta)
+            # Update the observed mapping so repeated packets do not flood the log.
+            tabla_arp_conocida[ip_real] = mac_recibida
+    else:
+        tabla_arp_conocida[ip_real] = mac_recibida
 
-            # Si ya teníamos registrada una MAC para esta IP y cambia abruptamente, hay suplantación
-            if ip_real in tabla_arp_conocida:
-                if tabla_arp_conocida[ip_real] != mac_recibida:
-                    alerta = f"¡ALERTA DE ARP SPOOFING! La IP {ip_real} cambió su MAC de {tabla_arp_conocida[ip_real]} a {mac_recibida}"
-                    print(f"\033[93m\n[!] {alerta}\033[0m")
-                    logging.critical(alerta)
-            else:
-                tabla_arp_conocida[ip_real] = mac_recibida
-# Función principal que enruta el procesamiento de paquetes
+
 def procesar_paquete(paquete):
-    """Función enrutadora que procesa cada paquete capturado por Scapy."""
     analizar_trafico_tcp(paquete)
     analizar_trafico_arp(paquete)
-# Función de inicio del IDS y sistema de defensa activa
+
+
 def iniciar_ids():
     print("=" * 60)
-    print("  BLUE TEAM: IDS & Active Defense (Scapy + Iptables)")
+    print("  BLUE TEAM: IDS & Active Defense (Scapy + iptables)")
     print("=" * 60)
     print("[*] Monitoreando interfaces de red en busca de anomalías...")
-    print("[*] Reglas activas: Detección de Nmap, SYN Flood y ARP Spoofing.")
-    print("[*] Presiona Ctrl+C para detener el sistema de defensa.\n")
-    
+    print("[*] Presiona Ctrl+C para detener.")
     try:
-        # Captura general de paquetes de red de forma continua
         sniff(prn=procesar_paquete, store=False)
     except PermissionError:
-        print("\n[-] Error: Se requieren permisos de superusuario (sudo) para capturar tráfico y modificar iptables.")
+        logging.exception("Permisos insuficientes para capturar tráfico.")
+        print("[-] Se requieren permisos adecuados para capturar tráfico.")
     except KeyboardInterrupt:
-        print("\n\n[*] Sistema IDS detenido de forma segura. Logs guardados en 'intrusion_defense.log'.")
-# Inicio del programa
+        print("\n[*] IDS detenido; logs guardados en intrusion_defense.log.")
+
+
 if __name__ == "__main__":
     iniciar_ids()
