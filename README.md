@@ -1,115 +1,85 @@
-# 🛡️ Blue Team SIEM & Automated Defense Framework
+# NexusSIEM — Blue Team SIEM & Automated Defense
 
-> **University Project:** Bachelor's Degree in Cybersecurity Engineering  
-> **Institution:** Universidad Fidélitas, Costa Rica  
-> **Author:** Gabriel Villalobos Alpízar
+**Author:** Gabriel Villalobos Alpízar
 
----
+NexusSIEM is a personal Blue Team lab for Linux-based environments. It combines security-event monitoring, a Flask dashboard, basic IDS detections, controlled firewall response, Atom-Hardening audit reports, and optional Microsoft Teams notifications.
 
-## 📌 Project Overview
+> **Lab warning:** this project is for controlled environments. Do not expose the Flask development server directly to the Internet. Review firewall changes before running them on a remote machine.
 
-This project is an integrated **active defense and security monitoring (Blue Team)** solution designed for Linux-based virtual environments (CachyOS / Arch Linux) deployed in Microsoft Azure.
+## Architecture
 
-In modern cybersecurity, responding to incidents quickly is just as critical as prevention. This framework automates intrusion detection (IDS), hardens the operating system's attack surface, centralizes events in a lightweight **Flask-based SIEM**, and sends real-time alerts to corporate communication channels (Microsoft Teams) using Adaptive Cards. It can also automatically apply firewall blocks through `iptables` / `UFW` without human intervention.
+- `blue_team/web_app/`: Flask dashboard, authenticated operator routes, alert API, Teams notifications.
+- `blue_team/sniffer_defense.py`: Scapy-based TCP/ARP monitoring with optional iptables response.
+- `blue_team/ssh_defender.py`: SSH authentication-failure monitor with optional iptables response.
+- `blue_team/firewall_hardening.sh`: conservative UFW configuration; preserves existing rules.
+- Atom-Hardening: optional external audit report integration.
 
----
+## Requirements
 
-## 🏗️ Architecture and Repository Structure
+- Python 3.10+ (use a version supported by the installed dependencies).
+- Linux with Flask, Requests and Scapy dependencies from `requirements.txt`.
+- UFW and/or iptables for firewall features.
+- Root privileges are required for packet capture and firewall changes.
 
-The project is organized into modules to separate defensive capabilities, auditing tools, and technical reports:
-
-```text
-NexusSIEM/
-│
-├── blue_team/                     # Main defensive module
-│   ├── web_app/                   # SIEM application and dashboard
-│   │   ├── static/
-│   │   │   └── style.css          # Dark-mode UI/UX styling
-│   │   ├── templates/
-│   │   │   └── index.html         # Interactive web interface with auto-refresh
-│   │   └── app.py                 # Flask server, alert API, and Teams webhook
-│   ├── atom.py                    # Custom operating-system auditing framework
-│   ├── sniffer_defense.py         # Scapy-based IDS with active iptables response
-│   └── firewall_hardening.sh      # UFW hardening and traffic-control script
-│
-├── red_team/                      # Simulation and offensive-testing module
-│   └── (Testing and automated-scanning tools)
-│
-├── docs/                          # Academic documentation and technical reports
-│   └── report.md                 # Detailed project report
-│
-├── .gitignore                     # Excludes virtual environments, logs, and cache
-├── requirements.txt               # Python project dependencies
-└── README.md                      # Main repository documentation
-```
-
----
-
-## ⚙️ Technology Stack
-
-- **Core and Backend:** Python 3 (Flask, Scapy, Requests, Subprocess)
-- **Security and Networking:** UFW, `iptables`, Bash scripting, network packet analysis
-- **Alerts and Automation:** Microsoft Teams (Power Automate webhooks and Adaptive Cards)
-- **Environment:** Linux (CachyOS / Arch Linux) and Microsoft Azure virtual machines
-
----
-
-## 🚀 Installation and Deployment
-
-Follow these steps to clone, configure, and run the framework in a local environment or an Azure virtual machine.
-
-### 1. Clone the repository
+## Install
 
 ```bash
 git clone https://github.com/GaboX280/NexusSIEM.git
 cd NexusSIEM
+python3 -m venv venv
+source venv/bin/activate
+python -m pip install -r requirements.txt
 ```
 
-### 2. Create a Python virtual environment
+## Configure secrets
+
+Set credentials outside the repository. Do not commit real passwords, tokens, or webhook URLs.
 
 ```bash
-python -m venv venv
-# Activate the environment
-source venv/bin/activate.fish   # or 'source venv/bin/activate' in bash
+export NEXUS_ADMIN_USER='operator'
+export NEXUS_ADMIN_PASSWORD='replace-with-a-long-unique-password'
+export NEXUS_ALERT_TOKEN='replace-with-a-long-random-token'
+# Optional:
+export NEXUS_TEAMS_WEBHOOK='https://your-approved-webhook-url'
 ```
 
-### 3. Install dependencies
+Generate a random alert token, for example, with `python -c "import secrets; print(secrets.token_urlsafe(32))"`. Configure the same token in each trusted sensor or integration that sends events to `POST /api/alert` using the header `Authorization: Bearer <NEXUS_ALERT_TOKEN>`.
 
-```bash
-pip install -r requirements.txt
-```
+The alert API does not trust requests solely because they originate from localhost. An alert containing `ip_to_block` is logged but **does not** trigger a firewall change unless it also explicitly sets `block_ip: true` and `level: "CRITICAL"`. Special-purpose IP addresses are rejected. Review automated response in an isolated lab before enabling it.
 
-### 4. Configure the firewall and hardening
+## Firewall setup
 
-Make the hardening script executable and run it:
+The script preserves existing UFW rules; it no longer runs `ufw reset`. It adds a rate-limited SSH rule before applying the default incoming-deny policy. Verify your actual SSH port first:
 
 ```bash
 cd blue_team
 chmod +x firewall_hardening.sh
-sudo ./firewall_hardening.sh
+sudo env SSH_PORT=22 ./firewall_hardening.sh
 ```
 
-### 5. Start the SIEM dashboard and web server
+HTTP/HTTPS are not opened automatically. If this host intentionally serves web traffic, use `NEXUS_ALLOW_WEB=1` after reviewing the impact. If you administer the host remotely, confirm console/out-of-band access and the SSH port before changing firewall policy.
 
-Navigate to the web application directory and start the Flask server:
+## Start the dashboard
+
+By default, the Flask server listens only on loopback (`127.0.0.1:5000`), which is the safer choice for local testing:
 
 ```bash
-cd web_app
+cd blue_team/web_app
 python app.py
 ```
 
-The dashboard will be available at `http://<AZURE_IP_OR_LOCALHOST>:5000`.
+Open `http://127.0.0.1:5000` and authenticate with `NEXUS_ADMIN_USER` and `NEXUS_ADMIN_PASSWORD`.
 
----
+For remote operator access, deploy behind a properly configured HTTPS reverse proxy and restrict access at the network layer. Only set `NEXUS_HOST=0.0.0.0` when you have intentionally configured that deployment path; do not expose Flask's development server directly to the public Internet. Optional port override: `NEXUS_PORT=5000`.
 
-## 📊 Key Features
+## Security notes
 
-1. **Automated incident response (basic SOAR):** When a critical alert includes a source IP address, the system can interact with `iptables` to apply an immediate `DROP` rule.
-2. **Real-time dashboard:** A dark-themed web interface with status cards and auto-refresh for continuous SOC monitoring.
-3. **Teams integration:** Automatically sends structured alerts using Adaptive Cards, improving team visibility and traceability.
+- Administrative routes require HTTP Basic credentials configured through environment variables. Use HTTPS whenever traffic leaves the local host.
+- `POST /api/alert` requires the separate Bearer token `NEXUS_ALERT_TOKEN`.
+- Firewall commands use argument lists (no shell interpolation), validate IP addresses, and apply execution timeouts.
+- Automatic blocking should be treated as a lab feature, not a production-ready SOAR control. Add allowlists, review/approval workflows, durable audit trails, and automated tests before using it on production systems.
+- The dashboard keeps recent alerts in process memory; the list is not a durable incident database.
 
----
+## License
 
-## 📄 License
-
-This project is developed for academic and research purposes as part of the Cybersecurity Engineering program at Universidad Fidélitas.
+See the repository's license file, if present.
