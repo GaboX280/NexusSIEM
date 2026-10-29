@@ -155,8 +155,9 @@ def bloquear_ip(ip):
     if direccion is None:
         return "Bloqueo rechazado: IP inválida o especial."
 
-    regla = ["iptables", "-C", "INPUT", "-s", str(direccion), "-j", "DROP"]
-    agregar = ["iptables", "-A", "INPUT", "-s", str(direccion), "-j", "DROP"]
+    # Require non-interactive, explicitly configured sudo access when Flask is not root.
+    regla = ["sudo", "-n", "iptables", "-C", "INPUT", "-s", str(direccion), "-j", "DROP"]
+    agregar = ["sudo", "-n", "iptables", "-A", "INPUT", "-s", str(direccion), "-j", "DROP"]
     try:
         check = subprocess.run(
             regla, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
