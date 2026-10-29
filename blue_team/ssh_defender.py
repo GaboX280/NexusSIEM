@@ -38,8 +38,9 @@ def bloquear_ip(ip_atacante):
         logging.warning("Bloqueo SSH rechazado para IP inválida/especial: %r", ip_atacante)
         return False
 
-    check = ["iptables", "-C", "INPUT", "-s", str(ip), "-j", "DROP"]
-    add = ["iptables", "-A", "INPUT", "-s", str(ip), "-j", "DROP"]
+    binary = "ip6tables" if ip.version == 6 else "iptables"
+    check = [binary, "-C", "INPUT", "-s", str(ip), "-j", "DROP"]
+    add = [binary, "-A", "INPUT", "-s", str(ip), "-j", "DROP"]
     try:
         result = subprocess.run(check, capture_output=True, text=True, timeout=5, check=False)
         if result.returncode == 0:
