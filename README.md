@@ -77,6 +77,7 @@ For remote operator access, deploy behind a properly configured HTTPS reverse pr
 - Administrative routes require HTTP Basic credentials configured through environment variables. Use HTTPS whenever traffic leaves the local host.
 - `POST /api/alert` requires the separate Bearer token `NEXUS_ALERT_TOKEN`.
 - Firewall commands use argument lists (no shell interpolation), validate IP addresses, and apply execution timeouts.
+- For API-triggered firewall blocks, configure a narrowly scoped sudoers rule for the service account to run only the required `iptables` commands non-interactively; do not grant broad passwordless sudo. Confirm the actual `iptables` path on the host first.
 - Automatic blocking should be treated as a lab feature, not a production-ready SOAR control. Add allowlists, review/approval workflows, durable audit trails, and automated tests before using it on production systems.
 - The dashboard keeps recent alerts in process memory; the list is not a durable incident database.
 
