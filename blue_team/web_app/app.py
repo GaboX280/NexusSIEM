@@ -156,8 +156,9 @@ def bloquear_ip(ip):
         return "Bloqueo rechazado: IP inválida o especial."
 
     # Require non-interactive, explicitly configured sudo access when Flask is not root.
-    regla = ["sudo", "-n", "iptables", "-C", "INPUT", "-s", str(direccion), "-j", "DROP"]
-    agregar = ["sudo", "-n", "iptables", "-A", "INPUT", "-s", str(direccion), "-j", "DROP"]
+    binary = "ip6tables" if direccion.version == 6 else "iptables"
+    regla = ["sudo", "-n", binary, "-C", "INPUT", "-s", str(direccion), "-j", "DROP"]
+    agregar = ["sudo", "-n", binary, "-A", "INPUT", "-s", str(direccion), "-j", "DROP"]
     try:
         check = subprocess.run(
             regla, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
