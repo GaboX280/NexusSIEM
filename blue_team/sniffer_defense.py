@@ -41,8 +41,9 @@ def bloquear_ip(ip_atacante, motivo):
         logging.warning("Bloqueo rechazado para IP inválida/especial: %r (%s)", ip_atacante, motivo)
         return False
 
-    base = ["iptables", "-C", "INPUT", "-s", str(ip), "-j", "DROP"]
-    add = ["iptables", "-A", "INPUT", "-s", str(ip), "-j", "DROP"]
+    binary = "ip6tables" if ip.version == 6 else "iptables"
+    base = [binary, "-C", "INPUT", "-s", str(ip), "-j", "DROP"]
+    add = [binary, "-A", "INPUT", "-s", str(ip), "-j", "DROP"]
     try:
         check = subprocess.run(base, capture_output=True, text=True, timeout=5, check=False)
         if check.returncode == 0:
