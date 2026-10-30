@@ -1,86 +1,120 @@
 #!/usr/bin/env python3
-import subprocess
-import re
-import time
-import logging
+"""SSH failed-login monitor with validated, shell-free firewall response."""
 from collections import defaultdict
-# Configuración de logs
+import ipaddress
+import logging
+import re
+import subprocess
+import time
+
 logging.basicConfig(
     filename="ssh_defender.log",
     level=logging.WARNING,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
-# Configuración del monitor
-LIMITE_FALLOS = 5 # Número de intentos fallidos antes de bloquear
-VENTANA_TIEMPO = 60  # Segundos
-# Diccionario para almacenar los timestamps de los fallos por IP
+
+LIMITE_FALLOS = 5
+VENTANA_TIEMPO = 60
 intentos_fallidos = defaultdict(list)
-## FUNCIONES DEL PROGRAMA ##
-# Funcion para bloquear IPs maliciosas usando iptables
-def bloquear_ip(ip_atacante):
-    """Ejecuta iptables para bloquear la IP y registra la acción."""
+PATRON_IP = re.compile(r"(?:Failed password|Invalid user).*?from\s+([0-9a-fA-F:.]+)")
+
+
+def ip_bloqueable(ip_atacante):
+    """Parse and reject special-purpose addresses before firewall changes."""
     try:
-        # Verificar si la IP ya está bloqueada
-        verificacion = subprocess.run(
-            f"sudo iptables -C INPUT -s {ip_atacante} -j DROP", 
-            shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-        if verificacion.returncode != 0:
-            subprocess.run(f"sudo iptables -A INPUT -s {ip_atacante} -j DROP", shell=True, check=True)
-            mensaje = f"[BLOQUEO AUTOMÁTICO] IP bloqueada por fuerza bruta SSH: {ip_atacante}"
-            print(f"\033[91m\n[!] {mensaje}\033[0m")
-            logging.critical(mensaje)
-        else:
-            print(f"[*] La IP {ip_atacante} ya está bloqueada.")
-    except Exception as e:
-        print(f"[-] Error al bloquear la IP {ip_atacante}: {e}")
-# Funcion para analizar cada línea de log y detectar intentos fallidos de SSH
+        ip = ipaddress.ip_address(ip_atacante)
+    except (ValueError, TypeError):
+        return None
+    if ip.is_loopback or ip.is_unspecified or ip.is_multicast or ip.is_link_local or ip.is_reserved:
+        return None
+    return ip
+
+
+def bloquear_ip(ip_atacante):
+    """Apply a validated firewall rule without shell interpolation."""
+    ip = ip_bloqueable(ip_atacante)
+    if ip is None:
+        logging.warning("Bloqueo SSH rechazado para IP inválida/especial: %r", ip_atacante)
+        return False
+
+    binary = "ip6tables" if ip.version == 6 else "iptables"
+    check = [binary, "-C", "INPUT", "-s", str(ip), "-j", "DROP"]
+    add = [binary, "-A", "INPUT", "-s", str(ip), "-j", "DROP"]
+    try:
+        result = subprocess.run(check, capture_output=True, text=True, timeout=5, check=False)
+        if result.returncode == 0:
+            print("[*] La IP %s ya está bloqueada." % ip)
+            return True
+        result = subprocess.run(add, capture_output=True, text=True, timeout=5, check=False)
+        if result.returncode != 0:
+            logging.error("iptables no pudo bloquear %s: %s", ip, result.stderr.strip())
+            return False
+        mensaje = "[BLOQUEO AUTOMÁTICO] IP bloqueada por fuerza bruta SSH: %s" % ip
+        print("\033[91m\n[!] %s\033[0m" % mensaje)
+        logging.critical(mensaje)
+        return True
+    except (OSError, subprocess.TimeoutExpired):
+        logging.exception("Error ejecutando iptables para %s.", ip)
+        return False
+
+
 def analizar_linea(linea):
-    """Busca patrones de fallo de autenticación SSH y extrae la IP."""
-    # Expresiones regulares para capturar IPs en "Failed password" o "Invalid user"
-    patron_ip = re.search(r"(Failed password|Invalid user).*from (\d+\.\d+\.\d+\.\d+)", linea)
-    
-    if patron_ip:
-        ip_atacante = patron_ip.group(2)
-        tiempo_actual = time.time()
-        
-        # Limpiar registros antiguos fuera de la ventana de tiempo (60 segundos)
-        intentos_fallidos[ip_atacante] = [t for t in intentos_fallidos[ip_atacante] if tiempo_actual - t < VENTANA_TIEMPO]
-        
-        # Registrar el nuevo intento fallido
-        intentos_fallidos[ip_atacante].append(tiempo_actual)
-        fallos_recientes = len(intentos_fallidos[ip_atacante])
-        
-        print(f"[*] Intento fallido SSH detectado desde {ip_atacante} (Total reciente: {fallos_recientes})")
-        
-        # Evaluar si supera el límite establecido
-        if fallos_recientes >= LIMITE_FALLOS:
-            alerta = f"Ataque de fuerza bruta detectado desde {ip_atacante}."
-            logging.error(alerta)
-            bloquear_ip(ip_atacante)
-            # Limpiar el historial de esa IP para no repetir el bloqueo en cada línea sucesiva
-            intentos_fallidos[ip_atacante].clear()
-# Funcion principal para iniciar el monitoreo de logs SSH
+    """Extract IPv4/IPv6 source addresses from failed SSH authentication events."""
+    coincidencia = PATRON_IP.search(linea)
+    if not coincidencia:
+        return
+    ip_atacante = coincidencia.group(1).strip("[]")
+    try:
+        ipaddress.ip_address(ip_atacante)
+    except ValueError:
+        return
+
+    tiempo_actual = time.monotonic()
+    intentos_fallidos[ip_atacante] = [
+        t for t in intentos_fallidos[ip_atacante] if tiempo_actual - t < VENTANA_TIEMPO
+    ]
+    intentos_fallidos[ip_atacante].append(tiempo_actual)
+    fallos_recientes = len(intentos_fallidos[ip_atacante])
+    print("[*] Intento fallido SSH detectado desde %s (total reciente: %s)" % (ip_atacante, fallos_recientes))
+
+    if fallos_recientes >= LIMITE_FALLOS:
+        logging.error("Posible ataque de fuerza bruta SSH desde %s.", ip_atacante)
+        bloquear_ip(ip_atacante)
+        intentos_fallidos[ip_atacante].clear()
+
+
 def iniciar_monitoreo():
     print("=" * 60)
     print("  BLUE TEAM: SSH Defender (Prevención de Fuerza Bruta)")
     print("=" * 60)
-    print(f"[*] Escuchando logs de autenticación mediante journalctl...")
-    print(f"[*] Regla activa: Bloqueo tras {LIMITE_FALLOS} fallos en {VENTANA_TIEMPO}s.")
-    print("[*] Presiona Ctrl+C para detener.\n")
-    
-    # Se utiliza journalctl para leer los logs del servicio ssh en tiempo real (-f)
-    comando = ["journalctl", "-u", "ssh", "-f", "-n", "0"]
-    
+    print("[*] Escuchando eventos SSH mediante journalctl.")
+    print("[*] Presiona Ctrl+C para detener.")
+    # Some distributions use sshd rather than ssh as the systemd unit.
+    comando = ["journalctl", "-f", "-n", "0", "-u", "ssh", "-u", "sshd"]
+    proceso = None
     try:
-        proceso = subprocess.Popen(comando, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        proceso = subprocess.Popen(
+            comando, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            text=True, bufsize=1,
+        )
+        if proceso.stdout is None:
+            raise RuntimeError("No se pudo abrir la salida de journalctl.")
         for linea in proceso.stdout:
             analizar_linea(linea.strip())
-    except PermissionError:
-        print("\n[-] Error: Ejecuta el script con 'sudo' para leer logs y aplicar iptables.")
+    except (OSError, RuntimeError):
+        logging.exception("No se pudo iniciar journalctl.")
+        print("[-] No se pudo iniciar journalctl; revise permisos y disponibilidad.")
     except KeyboardInterrupt:
-        print("\n[*] Monitoreo SSH detenido. Revisa 'ssh_defender.log' para detalles.")
-# Inicio del programa
+        print("\n[*] Monitoreo SSH detenido.")
+    finally:
+        if proceso and proceso.poll() is None:
+            proceso.terminate()
+            try:
+                proceso.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                proceso.kill()
+
+
 if __name__ == "__main__":
     iniciar_monitoreo()
