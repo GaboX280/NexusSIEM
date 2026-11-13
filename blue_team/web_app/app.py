@@ -6,6 +6,7 @@ import logging
 import subprocess
 import requests
 import os
+import sys
 import json
 from datetime import datetime
 from pathlib import Path
@@ -24,6 +25,11 @@ alertas_recientes = []
 
 # Ruta base para encontrar los scripts en la carpeta blue_team/
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+from security_policy import bloquear_ip as aplicar_bloqueo
+
 ATOM_REPORTS_DIR = Path.home() / "Atom-Hardening" / "reports"
 
 logging.basicConfig(
@@ -118,45 +124,14 @@ def cargar_ultimo_reporte_atom():
 
 
 def ip_valida(ip):
-    """Valida una IP antes de usarla en una regla de firewall."""
-    try:
-        return ipaddress.ip_address(ip)
-    except (ValueError, TypeError):
-        return None
+    """Valida una dirección IP antes de procesarla."""
+    from security_policy import ip_valida as validar
+    return validar(ip)
 
 
 def bloquear_ip(ip):
-    """Bloquea una IP a nivel de firewall sin usar shell=True."""
-    direccion = ip_valida(ip)
-    if direccion is None:
-        return "IP inválida; no se aplicó bloqueo."
-
-    try:
-        check = subprocess.run(
-            ["sudo", "iptables", "-C", "INPUT", "-s", str(direccion), "-j", "DROP"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            timeout=5,
-        )
-
-        if check.returncode != 0:
-            subprocess.run(
-                ["sudo", "iptables", "-A", "INPUT", "-s", str(direccion), "-j", "DROP"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                check=True,
-                timeout=5,
-            )
-            return f"IP {direccion} bloqueada"
-
-    except subprocess.TimeoutExpired:
-        return "Error: operación de firewall agotó el tiempo de espera."
-    except subprocess.CalledProcessError as e:
-        return f"Error aplicando regla de firewall: {e}"
-
-    return "Ya estaba bloqueada"
+    """Aplica la política central de bloqueo, incluida la allowlist."""
+    return aplicar_bloqueo(ip, "Alerta recibida por NexusSIEM")
 
 
 def obtener_geolocalizacion(ip):
