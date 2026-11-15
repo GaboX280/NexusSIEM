@@ -18,8 +18,6 @@ In modern cybersecurity, responding to incidents quickly is just as critical as 
 
 The project is organized into modules to separate defensive capabilities, auditing tools, and technical reports:
 
-**Atom-Hardening** is maintained as a separate repository and executed as the Linux audit engine. NexusSIEM consumes its structured JSON output; it does not duplicate or modify Atom's audit checks. Configure its local checkout through `ATOM_HARDENING_DIR`.
-
 ```text
 NexusSIEM/
 │
@@ -31,13 +29,14 @@ NexusSIEM/
 │   │   │   └── index.html         # Interactive web interface with auto-refresh
 │   │   └── app.py                 # Flask server, alert API, and Teams webhook
 │   ├── sniffer_defense.py         # Scapy-based IDS with active iptables response
+│   ├── system_auditor.py          # Native read-only Linux security auditor
 │   └── firewall_hardening.sh      # UFW hardening and traffic-control script
 │
 ├── red_team/                      # Simulation and offensive-testing module
 │   └── (Testing and automated-scanning tools)
 │
 ├── reports/
-│   └── atom/                       # Generated JSON audit reports (local only)
+│   └── system_audit/              # Native JSON audit reports (local only)
 ├── docs/                          # Academic documentation and technical reports
 │   └── report.md                 # Detailed project report
 │
@@ -92,18 +91,15 @@ chmod +x firewall_hardening.sh
 sudo ./firewall_hardening.sh
 ```
 
-### 5. Configure Atom-Hardening
+### 5. Run the native system auditor
 
-Clone Atom-Hardening and configure its path:
+The Linux security audit is implemented directly in NexusSIEM. It does not require Atom-Hardening or any additional Python package. The dashboard launches the read-only auditor and reads the latest JSON report from `reports/system_audit/`.
+
+You can also run it manually:
 
 ```bash
-git clone https://github.com/GaboX280/Atom-Hardening.git ~/Atom-Hardening
-export ATOM_HARDENING_DIR="$HOME/Atom-Hardening"
+python blue_team/system_auditor.py
 ```
-
-NexusSIEM invokes Atom in non-interactive JSON mode and stores reports in `reports/atom/`. The Atom runtime dependencies (`rich` and `pyfiglet`) are included in the NexusSIEM requirements.
-
-If Atom is installed elsewhere, set `ATOM_HARDENING_DIR` to the directory containing `main.py`. Optionally set `ATOM_PYTHON` to the Python interpreter used by that installation.
 
 ### 6. Start the SIEM dashboard and web server
 
@@ -123,7 +119,7 @@ The dashboard will be available at `http://<AZURE_IP_OR_LOCALHOST>:5000`.
 1. **Automated incident response (basic SOAR):** When a critical alert includes a source IP address, the system can interact with `iptables` to apply an immediate `DROP` rule.
 2. **Real-time dashboard:** A dark-themed web interface with status cards and auto-refresh for continuous SOC monitoring.
 3. **Teams integration:** Automatically sends structured alerts using Adaptive Cards, improving team visibility and traceability.
-4. **Linux security auditing:** Runs Atom-Hardening's existing checks for firewall configuration, services, failed logins, root accounts, SUID files, permissions, password policy, and network configuration. Results are saved as JSON and displayed in the dashboard, including PASS, WARNING, FAIL, and ERROR states.
+4. **Linux security auditing:** Runs NexusSIEM's native, read-only Linux checks for UID 0 accounts, SSH configuration, firewall state, sensitive file permissions, Fail2ban, listening network services, and pending package updates. Results are saved as JSON and displayed in the dashboard with PASS, WARNING, FAIL, and ERROR states.
 
 ---
 
