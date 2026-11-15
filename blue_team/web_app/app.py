@@ -365,7 +365,7 @@ def ultimo_reporte_auditoria():
     if auth_error:
         return auth_error
 
-    reporte = cargar_ultimo_reporte_atom()
+    reporte = cargar_ultimo_reporte_auditoria()
     if reporte is None:
         return jsonify({
             "status": "not_found",
@@ -429,7 +429,7 @@ def dashboard():
     if auth_error:
         return auth_error
 
-    reporte_atom = cargar_ultimo_reporte_atom()
+    reporte_auditoria = cargar_ultimo_reporte_auditoria()
 
     return render_template(
         "index.html",
