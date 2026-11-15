@@ -18,6 +18,8 @@ In modern cybersecurity, responding to incidents quickly is just as critical as 
 
 The project is organized into modules to separate defensive capabilities, auditing tools, and technical reports:
 
+**Atom-Hardening** is maintained as a separate repository and executed as the Linux audit engine. NexusSIEM consumes its structured JSON output; it does not duplicate or modify Atom's audit checks. Configure its local checkout through `ATOM_HARDENING_DIR`.
+
 ```text
 NexusSIEM/
 │
@@ -28,13 +30,14 @@ NexusSIEM/
 │   │   ├── templates/
 │   │   │   └── index.html         # Interactive web interface with auto-refresh
 │   │   └── app.py                 # Flask server, alert API, and Teams webhook
-│   ├── Atom-Hardening/            # External Atom audit engine (Linux checks)
 │   ├── sniffer_defense.py         # Scapy-based IDS with active iptables response
 │   └── firewall_hardening.sh      # UFW hardening and traffic-control script
 │
 ├── red_team/                      # Simulation and offensive-testing module
 │   └── (Testing and automated-scanning tools)
 │
+├── reports/
+│   └── atom/                       # Generated JSON audit reports (local only)
 ├── docs/                          # Academic documentation and technical reports
 │   └── report.md                 # Detailed project report
 │
@@ -120,6 +123,7 @@ The dashboard will be available at `http://<AZURE_IP_OR_LOCALHOST>:5000`.
 1. **Automated incident response (basic SOAR):** When a critical alert includes a source IP address, the system can interact with `iptables` to apply an immediate `DROP` rule.
 2. **Real-time dashboard:** A dark-themed web interface with status cards and auto-refresh for continuous SOC monitoring.
 3. **Teams integration:** Automatically sends structured alerts using Adaptive Cards, improving team visibility and traceability.
+4. **Linux security auditing:** Runs Atom-Hardening's existing checks for firewall configuration, services, failed logins, root accounts, SUID files, permissions, password policy, and network configuration. Results are saved as JSON and displayed in the dashboard, including PASS, WARNING, FAIL, and ERROR states.
 
 ---
 
