@@ -28,7 +28,7 @@ NexusSIEM/
 │   │   ├── templates/
 │   │   │   └── index.html         # Interactive web interface with auto-refresh
 │   │   └── app.py                 # Flask server, alert API, and Teams webhook
-│   ├── atom.py                    # Custom operating-system auditing framework
+│   ├── Atom-Hardening/            # External Atom audit engine (Linux checks)
 │   ├── sniffer_defense.py         # Scapy-based IDS with active iptables response
 │   └── firewall_hardening.sh      # UFW hardening and traffic-control script
 │
@@ -89,7 +89,20 @@ chmod +x firewall_hardening.sh
 sudo ./firewall_hardening.sh
 ```
 
-### 5. Start the SIEM dashboard and web server
+### 5. Configure Atom-Hardening
+
+Clone Atom-Hardening and configure its path:
+
+```bash
+git clone https://github.com/GaboX280/Atom-Hardening.git ~/Atom-Hardening
+export ATOM_HARDENING_DIR="$HOME/Atom-Hardening"
+```
+
+NexusSIEM invokes Atom in non-interactive JSON mode and stores reports in `reports/atom/`. The Atom runtime dependencies (`rich` and `pyfiglet`) are included in the NexusSIEM requirements.
+
+If Atom is installed elsewhere, set `ATOM_HARDENING_DIR` to the directory containing `main.py`. Optionally set `ATOM_PYTHON` to the Python interpreter used by that installation.
+
+### 6. Start the SIEM dashboard and web server
 
 Navigate to the web application directory and start the Flask server:
 
