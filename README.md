@@ -93,7 +93,7 @@ sudo ./firewall_hardening.sh
 
 ### 5. Run the native system auditor
 
-The Linux security audit is implemented directly in NexusSIEM. It does not require Atom-Hardening or any additional Python package. The dashboard launches the read-only auditor and reads the latest JSON report from `reports/system_audit/`.
+The Linux security audit is implemented directly in NexusSIEM. It runs independently and requires no additional Python packages. The dashboard launches the read-only auditor and reads the latest JSON report from `reports/system_audit/`.
 
 You can also run it manually:
 
