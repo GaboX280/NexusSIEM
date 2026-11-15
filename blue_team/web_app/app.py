@@ -153,7 +153,7 @@ def iniciar_auditoria_sistema():
         except (OSError, subprocess.SubprocessError):
             logging.exception("Could not start native system auditor.")
             return False, "Could not start the system audit. Check server logs."
-        return True, "NexusSIEM system audit started (read-only checks)."
+        return True, "Auditoría de seguridad del sistema iniciada correctamente. NexusSIEM está ejecutando comprobaciones de solo lectura."
 
 def ip_valida(ip):
     """Valida una IP antes de usarla en una regla de firewall."""
