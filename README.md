@@ -28,13 +28,15 @@ NexusSIEM/
 │   │   ├── templates/
 │   │   │   └── index.html         # Interactive web interface with auto-refresh
 │   │   └── app.py                 # Flask server, alert API, and Teams webhook
-│   ├── atom.py                    # Custom operating-system auditing framework
 │   ├── sniffer_defense.py         # Scapy-based IDS with active iptables response
+│   ├── system_auditor.py          # Native read-only Linux security auditor
 │   └── firewall_hardening.sh      # UFW hardening and traffic-control script
 │
 ├── red_team/                      # Simulation and offensive-testing module
 │   └── (Testing and automated-scanning tools)
 │
+├── reports/
+│   └── system_audit/              # Native JSON audit reports (local only)
 ├── docs/                          # Academic documentation and technical reports
 │   └── report.md                 # Detailed project report
 │
@@ -89,7 +91,17 @@ chmod +x firewall_hardening.sh
 sudo ./firewall_hardening.sh
 ```
 
-### 5. Start the SIEM dashboard and web server
+### 5. Run the native system auditor
+
+The Linux security audit is implemented directly in NexusSIEM. It runs independently and requires no additional Python packages. The dashboard launches the read-only auditor and reads the latest JSON report from `reports/system_audit/`.
+
+You can also run it manually:
+
+```bash
+python blue_team/system_auditor.py
+```
+
+### 6. Start the SIEM dashboard and web server
 
 Navigate to the web application directory and start the Flask server:
 
@@ -107,6 +119,7 @@ The dashboard will be available at `http://<AZURE_IP_OR_LOCALHOST>:5000`.
 1. **Automated incident response (basic SOAR):** When a critical alert includes a source IP address, the system can interact with `iptables` to apply an immediate `DROP` rule.
 2. **Real-time dashboard:** A dark-themed web interface with status cards and auto-refresh for continuous SOC monitoring.
 3. **Teams integration:** Automatically sends structured alerts using Adaptive Cards, improving team visibility and traceability.
+4. **Linux security auditing:** Runs NexusSIEM's native, read-only Linux checks for UID 0 accounts, SSH configuration, firewall state, sensitive file permissions, Fail2ban, listening network services, and pending package updates. Results are saved as JSON and displayed in the dashboard with PASS, WARNING, FAIL, and ERROR states.
 
 ---
 

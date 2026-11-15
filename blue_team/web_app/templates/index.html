@@ -309,7 +309,7 @@
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 17h6m-3-14v4m-5 0h10M6 21h12a2 2 0 0 0 2-2V7H4v12a2 2 0 0 0 2 2Z"/>
                 </svg>
-                Atom Audit
+                System Audit
             </a>
 
             <a href="#alerts" class="mt-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-nexus-400 transition hover:bg-white/[.03] hover:text-white">
@@ -431,7 +431,7 @@
                             <div class="mt-6 flex flex-wrap gap-2">
                                 <span class="rounded-md border border-white/5 bg-white/[.025] px-2.5 py-1.5 font-mono text-[9px] text-nexus-500">FAIL2BAN</span>
                                 <span class="rounded-md border border-white/5 bg-white/[.025] px-2.5 py-1.5 font-mono text-[9px] text-nexus-500">FIREWALL</span>
-                                <span class="rounded-md border border-white/5 bg-white/[.025] px-2.5 py-1.5 font-mono text-[9px] text-nexus-500">ATOM</span>
+                                <span class="rounded-md border border-white/5 bg-white/[.025] px-2.5 py-1.5 font-mono text-[9px] text-nexus-500">NEXUSSIEM</span>
                                 <span class="rounded-md border border-white/5 bg-white/[.025] px-2.5 py-1.5 font-mono text-[9px] text-nexus-500">NETWORK IDS</span>
                             </div>
                         </div>
@@ -568,7 +568,7 @@
                                     </div>
                                     <span class="font-mono text-[9px] text-nexus-600">AT-02</span>
                                 </div>
-                                <div class="mt-5 text-sm font-semibold text-white">Run Atom Audit</div>
+                                <div class="mt-5 text-sm font-semibold text-white">Run System Audit</div>
                                 <p class="mt-1.5 text-[11px] leading-5 text-nexus-500">Ejecutar revisión automatizada de la postura de seguridad.</p>
                                 <div class="mt-4 flex items-center justify-between">
                                     <span class="rounded-md bg-signal-green/5 px-2 py-1 text-[8px] font-semibold uppercase tracking-wider text-signal-green">Audit</span>
@@ -617,11 +617,11 @@
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-3">
                                         <span class="h-2 w-2 rounded-full bg-signal-green"></span>
-                                        <span class="text-xs font-medium text-nexus-200">Atom Framework</span>
+                                        <span class="text-xs font-medium text-nexus-200">System Audit Engine</span>
                                     </div>
                                     <span class="font-mono text-[9px] text-signal-green">READY</span>
                                 </div>
-                                <div class="mt-2 pl-5 text-[10px] text-nexus-600">Automated system audit launcher</div>
+                                <div class="mt-2 pl-5 text-[10px] text-nexus-600">Native read-only Linux security checks</div>
                             </div>
 
                             <div class="rounded-xl border border-white/5 bg-white/[.018] p-4">
@@ -650,15 +650,15 @@
                 </section>
 
 
-                <!-- Atom audit results -->
-                <!-- Atom audit results -->
+                <!-- Native NexusSIEM system audit results -->
+                <!-- Native NexusSIEM system audit results -->
                 <section id="audit" class="panel overflow-hidden rounded-2xl reveal" style="--delay: 250ms">
                     <div class="border-b border-white/5 px-5 py-5 sm:px-6">
                         <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                             <div>
                                 <div class="text-[9px] font-bold uppercase tracking-[.22em] text-nexus-600">Security Assessment</div>
                                 <div class="mt-1 flex items-center gap-3">
-                                    <h3 class="text-base font-semibold text-white">Atom Security Audit</h3>
+                                    <h3 class="text-base font-semibold text-white">Linux Security Audit</h3>
                                     <span id="audit-live-state" class="inline-flex items-center gap-1.5 rounded-full border border-signal-amber/15 bg-signal-amber/5 px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-signal-amber">
                                         Checking
                                     </span>
@@ -672,7 +672,7 @@
                         <div class="flex min-h-[220px] items-center justify-center px-5 py-16 text-center">
                             <div>
                                 <div class="mx-auto h-8 w-8 animate-spin rounded-full border border-white/10 border-t-signal-blue"></div>
-                                <div class="mt-4 text-xs text-nexus-500">Consultando el último reporte de Atom...</div>
+                                <div class="mt-4 text-xs text-nexus-500">Consultando el último reporte de auditoría...</div>
                             </div>
                         </div>
                     </div>
@@ -955,8 +955,8 @@
                                 <circle cx="12" cy="12" r="8"/>
                             </svg>
                         </div>
-                        <div class="mt-4 text-sm font-medium text-nexus-300">No Atom audit available</div>
-                        <div class="mt-1 text-xs text-nexus-600">Ejecuta <span class="font-mono text-nexus-400">Run Atom Audit</span> para generar el primer reporte.</div>
+                        <div class="mt-4 text-sm font-medium text-nexus-300">No system audit available</div>
+                        <div class="mt-1 text-xs text-nexus-600">Ejecuta <span class="font-mono text-nexus-400">Run System Audit</span> para generar el primer reporte.</div>
                     </div>
                 </div>
             `;
@@ -985,6 +985,7 @@
 
             if (findingStatus === 'PASS') badge = 'border-signal-green/15 bg-signal-green/5 text-signal-green';
             else if (findingStatus === 'WARNING') badge = 'border-signal-amber/15 bg-signal-amber/5 text-signal-amber';
+            else if (findingStatus === 'ERROR') badge = 'border-white/10 bg-white/[.035] text-nexus-300';
 
             return `
                 <details class="group bg-white/[.006] transition hover:bg-white/[.012]">
@@ -1029,7 +1030,7 @@
                 <div class="rounded-xl border border-white/5 bg-black/10 p-5">
                     <div class="flex items-center justify-between">
                         <span class="text-[9px] font-bold uppercase tracking-[.2em] text-nexus-600">Security Score</span>
-                        <span class="font-mono text-[9px] text-nexus-600">ATOM</span>
+                        <span class="font-mono text-[9px] text-nexus-600">NEXUSSIEM</span>
                     </div>
                     <div class="mt-5 flex items-end gap-2">
                         <span class="text-5xl font-semibold tracking-tight text-white">${score}</span>
@@ -1051,10 +1052,10 @@
                 <div>
                     <div class="mb-3">
                         <div class="text-[9px] font-bold uppercase tracking-[.2em] text-nexus-600">Assessment Summary</div>
-                        <div class="mt-1 text-xs text-nexus-400">${total} findings returned by ${escaparHtml(summary.module || 'Atom')}</div>
+                        <div class="mt-1 text-xs text-nexus-400">${total} findings returned by ${escaparHtml(summary.module || 'NexusSIEM')}</div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
                         <div class="rounded-xl border border-signal-green/10 bg-signal-green/[.025] p-4">
                             <div class="text-[9px] uppercase tracking-[.16em] text-nexus-600">Pass</div>
                             <div class="mt-3 text-2xl font-semibold text-white">${Number(status.PASS || 0)}</div>
@@ -1068,6 +1069,10 @@
                             <div class="mt-3 text-2xl font-semibold text-white">${Number(status.FAIL || 0)}</div>
                         </div>
                         <div class="rounded-xl border border-white/5 bg-white/[.018] p-4">
+                            <div class="text-[9px] uppercase tracking-[.16em] text-nexus-600">Error</div>
+                            <div class="mt-3 text-2xl font-semibold text-white">${Number(status.ERROR || 0)}</div>
+                        </div>
+                        <div class="rounded-xl border border-white/5 bg-white/[.018] p-4">
                             <div class="text-[9px] uppercase tracking-[.16em] text-nexus-600">Findings</div>
                             <div class="mt-3 text-2xl font-semibold text-white">${total}</div>
                         </div>
@@ -1079,7 +1084,7 @@
                             <span class="font-mono text-[9px] text-${toneClass}">${escaparHtml(rating)}</span>
                         </div>
                         <div class="mt-3 text-[11px] leading-5 text-nexus-400">
-                            Atom evaluó la configuración del nodo y generó un reporte estructurado para revisión del equipo Blue Team.
+                            NexusSIEM evaluó la configuración del nodo y generó un reporte estructurado para revisión del equipo Blue Team.
                         </div>
                     </div>
                 </div>
