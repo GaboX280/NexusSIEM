@@ -7,6 +7,8 @@ import subprocess
 import requests
 import os
 import json
+import sys
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -22,9 +24,22 @@ ADMIN_PASSWORD = os.getenv("NEXUS_ADMIN_PASSWORD", "")
 LOG_FILE = os.path.join(os.path.dirname(__file__), "..", "central_security_alerts.log")
 alertas_recientes = []
 
-# Ruta base para encontrar los scripts en la carpeta blue_team/
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-ATOM_REPORTS_DIR = Path.home() / "Atom-Hardening" / "reports"
+# Rutas del proyecto y del motor de auditoría Atom-Hardening.
+BASE_DIR = str(Path(__file__).resolve().parent.parent)
+PROJECT_ROOT = Path(BASE_DIR).parent
+ATOM_HARDENING_DIR = Path(
+    os.getenv("ATOM_HARDENING_DIR", str(Path.home() / "Atom-Hardening"))
+).expanduser().resolve()
+ATOM_MAIN = ATOM_HARDENING_DIR / "main.py"
+ATOM_PYTHON = os.getenv("ATOM_PYTHON", sys.executable)
+ATOM_REPORTS_DIR = Path(
+    os.getenv("NEXUS_ATOM_REPORTS_DIR", str(PROJECT_ROOT / "reports" / "atom"))
+).expanduser().resolve()
+ATOM_AUDIT_LOG = Path(
+    os.getenv("NEXUS_ATOM_AUDIT_LOG", str(PROJECT_ROOT / "logs" / "atom-audit.log"))
+).expanduser().resolve()
+ATOM_AUDIT_LOCK = threading.Lock()
+atom_audit_process = None
 
 logging.basicConfig(
     filename=LOG_FILE,
@@ -79,29 +94,47 @@ def clasificacion_atom(score):
 
 
 def cargar_ultimo_reporte_atom():
-    """Carga el reporte JSON más reciente generado por Atom."""
+    """Carga y valida el reporte JSON más reciente generado por Atom-Hardening."""
     if not ATOM_REPORTS_DIR.is_dir():
         return None
 
-    reportes = sorted(
-        ATOM_REPORTS_DIR.glob("reporte_atom_*.json"),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True,
-    )
+    try:
+        reportes = sorted(
+            ATOM_REPORTS_DIR.glob("reporte_atom_*.json"),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )
+    except OSError:
+        logging.exception("No se pudo consultar el directorio de reportes Atom.")
+        return None
 
-    for reporte_path in reportes:
+    for reporte_path in reportes[:25]:
         try:
             with reporte_path.open("r", encoding="utf-8") as archivo:
                 contenido = json.load(archivo)
 
-            reporte = contenido.get("report", {})
-            summary = reporte.get("summary", {})
-            findings = reporte.get("findings", [])
+            if not isinstance(contenido, dict):
+                continue
+            reporte = contenido.get("report")
+            if not isinstance(reporte, dict):
+                continue
 
+            summary = reporte.get("summary")
+            findings = reporte.get("findings")
             if not isinstance(summary, dict) or not isinstance(findings, list):
                 continue
 
-            summary["rating"] = clasificacion_atom(summary.get("score", 0))
+            summary = dict(summary)
+            status = summary.get("status", {})
+            if not isinstance(status, dict):
+                status = {}
+            summary["status"] = {
+                key: int(status.get(key, 0) or 0)
+                for key in ("PASS", "WARNING", "FAIL", "ERROR")
+            }
+            summary["score"] = max(0, min(100, int(summary.get("score", 0) or 0)))
+            summary["rating"] = summary.get("rating") or clasificacion_atom(summary["score"])
+            summary["total"] = int(summary.get("total", len(findings)) or 0)
 
             return {
                 "filename": reporte_path.name,
@@ -109,12 +142,48 @@ def cargar_ultimo_reporte_atom():
                 "summary": summary,
                 "findings": findings,
             }
-
-        except (OSError, json.JSONDecodeError, ValueError):
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
             logging.exception("No se pudo leer el reporte de Atom: %s", reporte_path)
-            continue
 
     return None
+
+
+def iniciar_auditoria_atom():
+    """Ejecuta Atom-Hardening en modo no interactivo y genera JSON para NexusSIEM."""
+    global atom_audit_process
+
+    with ATOM_AUDIT_LOCK:
+        if atom_audit_process is not None and atom_audit_process.poll() is None:
+            return False, "Ya hay una auditoría de Atom en ejecución."
+        if not ATOM_MAIN.is_file():
+            return False, (
+                "No se encontró Atom-Hardening. Configura ATOM_HARDENING_DIR "
+                "con la ruta del repositorio que contiene main.py."
+            )
+
+        ATOM_REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        ATOM_AUDIT_LOG.parent.mkdir(parents=True, exist_ok=True)
+        command = [
+            ATOM_PYTHON, str(ATOM_MAIN), "--scan", "--format", "json",
+            "--quiet", "--output-dir", str(ATOM_REPORTS_DIR),
+        ]
+
+        try:
+            with ATOM_AUDIT_LOG.open("a", encoding="utf-8") as log_file:
+                atom_audit_process = subprocess.Popen(
+                    command,
+                    cwd=str(ATOM_HARDENING_DIR),
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT,
+                    start_new_session=True,
+                    close_fds=True,
+                    env={**os.environ, "PYTHONUNBUFFERED": "1"},
+                )
+        except (OSError, subprocess.SubprocessError):
+            logging.exception("No se pudo iniciar Atom-Hardening.")
+            return False, "No se pudo iniciar Atom-Hardening. Revisa la configuración y los logs."
+
+        return True, "Auditoría de seguridad Linux iniciada con Atom-Hardening."
 
 
 def ip_valida(ip):
@@ -354,9 +423,10 @@ def ejecutar_herramienta(herramienta):
             mensaje = "Hardening de firewall UFW ejecutado."
 
         elif herramienta == "audit":
-            launcher_path = os.path.join(BASE_DIR, "atom_launcher.py")
-            subprocess.Popen(["python3", launcher_path])
-            mensaje = "Auditoría del sistema iniciada con el framework Atom."
+            iniciada, mensaje = iniciar_auditoria_atom()
+            if not iniciada:
+                codigo = 409 if "en ejecución" in mensaje else 503
+                return jsonify({"status": "error", "error": mensaje}), codigo
 
         elif herramienta == "sniffer":
             script_path = os.path.join(BASE_DIR, "sniffer_defense.py")
@@ -376,7 +446,8 @@ def ejecutar_herramienta(herramienta):
             timeout=3,
         )
 
-        return jsonify({"status": "ok", "message": mensaje}), 200
+        codigo_respuesta = 202 if herramienta == "audit" else 200
+        return jsonify({"status": "ok", "message": mensaje}), codigo_respuesta
 
     except Exception as e:
         logging.exception("Error ejecutando herramienta")
